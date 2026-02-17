@@ -241,26 +241,52 @@ def parse_import_response(xml_text: str) -> tuple[bool, str, Optional[str]]:
     """
     Parse Tally's response to an Import Data request.
     Returns: (success: bool, message: str, voucher_number: Optional[str])
+
+    Tally Prime returns one of two structures:
+      A) <ENVELOPE><BODY><IMPORTRESULT><CREATED>1</CREATED>...</IMPORTRESULT></BODY></ENVELOPE>
+      B) <RESPONSE><CREATED>1</CREATED>...</RESPONSE>   (older Tally)
+    Errors appear in <LASTSTMTERROR> or <LINEERROR>.
     """
     data = _parse_xml(xml_text)
+    if not data:
+        logger.error("parse_import_response: empty/unparseable XML. Raw: %.500s", xml_text)
+        return False, "Could not parse Tally response. Check server logs.", None
+
     try:
-        response = data.get("RESPONSE", {}) or data.get("ENVELOPE", {}).get("BODY", {}).get("DATA", {})
-        # Tally returns LINEERROR or CREATED for import results
-        error = _safe_str(response.get("LINEERROR"))
-        if error:
-            return False, error, None
-        created = _safe_str(response.get("CREATED"))
-        voucher_number = _safe_str(response.get("VOUCHERNUMBER"))
-        if created == "1" or response.get("RESULT") == "1":
-            return True, "Voucher created successfully in Tally", voucher_number
-        # Try alternate path
-        import_result = data.get("ENVELOPE", {}).get("BODY", {}).get("IMPORTRESULT", {})
+        # ── Path A: Tally Prime 3.x — ENVELOPE > BODY > IMPORTRESULT ──────────
+        body = data.get("ENVELOPE", {}).get("BODY", {})
+        import_result = body.get("IMPORTRESULT") or body.get("DATA", {}).get("IMPORTRESULT")
         if import_result:
-            created_count = _safe_float(import_result.get("CREATED", 0))
-            if created_count > 0:
-                return True, f"{int(created_count)} voucher(s) created", None
-            error_msg = _safe_str(importresult.get("LASTSTMTERROR")) if (importresult := import_result) else None
-            return False, error_msg or "Unknown error from Tally", None
+            created = _safe_float(import_result.get("CREATED", 0))
+            errors  = _safe_float(import_result.get("ERRORS", 0))
+            if created > 0:
+                return True, f"{int(created)} voucher(s) created in Tally", None
+            err_msg = (
+                _safe_str(import_result.get("LASTSTMTERROR"))
+                or _safe_str(import_result.get("LINEERROR"))
+            )
+            if err_msg:
+                logger.warning("Tally push error: %s", err_msg)
+                return False, err_msg, None
+            if errors > 0:
+                logger.error("Tally returned %d error(s), raw: %.500s", int(errors), xml_text)
+                return False, f"Tally rejected the voucher ({int(errors)} error(s)). Check Tally logs.", None
+
+        # ── Path B: older <RESPONSE> wrapper ───────────────────────────────────
+        response = data.get("RESPONSE", {})
+        if response:
+            err_msg = _safe_str(response.get("LINEERROR")) or _safe_str(response.get("LASTSTMTERROR"))
+            if err_msg:
+                logger.warning("Tally push error: %s", err_msg)
+                return False, err_msg, None
+            created = _safe_float(response.get("CREATED", 0))
+            if created > 0:
+                return True, f"{int(created)} voucher(s) created in Tally", None
+
+        # ── Fallback: log full raw response so admin can diagnose ───────────────
+        logger.error("parse_import_response: unexpected structure. Raw: %.500s", xml_text)
+        return False, "Tally did not confirm the voucher. Check server logs (data/logs/app.log).", None
+
     except Exception as exc:
-        logger.error("parse_import_response error: %s", exc)
-    return False, "Could not parse Tally response", None
+        logger.error("parse_import_response error: %s | raw: %.500s", exc, xml_text)
+        return False, f"Parse error: {exc}", None

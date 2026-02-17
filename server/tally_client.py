@@ -141,8 +141,15 @@ class TallyClient:
             if success:
                 logger.info("Sales Order '%s' pushed to Tally company '%s'", order_number, company_name)
             else:
-                logger.warning("Push Sales Order '%s' failed: %s", order_number, message)
+                logger.warning(
+                    "Push Sales Order '%s' failed: %s | Tally raw response: %.800s",
+                    order_number, message, raw,
+                )
             return success, message, voucher_number
+        except httpx.ConnectError:
+            return False, f"Cannot reach Tally at {self.base_url} — is Tally running?", None
+        except httpx.TimeoutException:
+            return False, f"Tally timed out at {self.base_url}", None
         except Exception as exc:
             logger.error("push_sales_order failed: %s", exc)
             return False, str(exc), None
@@ -166,8 +173,15 @@ class TallyClient:
             if success:
                 logger.info("Purchase Order '%s' pushed to Tally company '%s'", order_number, company_name)
             else:
-                logger.warning("Push Purchase Order '%s' failed: %s", order_number, message)
+                logger.warning(
+                    "Push Purchase Order '%s' failed: %s | Tally raw response: %.800s",
+                    order_number, message, raw,
+                )
             return success, message, voucher_number
+        except httpx.ConnectError:
+            return False, f"Cannot reach Tally at {self.base_url} — is Tally running?", None
+        except httpx.TimeoutException:
+            return False, f"Tally timed out at {self.base_url}", None
         except Exception as exc:
             logger.error("push_purchase_order failed: %s", exc)
             return False, str(exc), None
