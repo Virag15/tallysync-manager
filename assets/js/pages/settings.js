@@ -10,6 +10,9 @@ async function initSettings() {
 }
 
 async function loadAppInfo() {
+  // Populate backend URL field from localStorage
+  document.getElementById('backend-url').value = localStorage.getItem('tallysync_api') || window.TALLYSYNC_API || 'http://localhost:8001';
+
   try {
     const info = await Info.get();
     document.getElementById('info-name').textContent    = info.name;
@@ -17,6 +20,15 @@ async function loadAppInfo() {
     document.getElementById('info-build').textContent   = info.build;
     document.getElementById('info-db').textContent      = info.db_path;
   } catch (_) { toast('Cannot reach server', 'error'); }
+}
+
+function saveBackendUrl() {
+  const url = document.getElementById('backend-url').value.trim().replace(/\/$/, '');
+  if (!url) { toast('Enter a valid URL', 'warning'); return; }
+  localStorage.setItem('tallysync_api', url);
+  window.TALLYSYNC_API = url;
+  toast('Backend URL saved — reloading…', 'success');
+  setTimeout(() => location.reload(), 900);
 }
 
 async function loadCompanies() {
@@ -64,6 +76,7 @@ function setupSettingsEvents() {
   document.getElementById('btn-test-entry')?.addEventListener('click', sendTestEntry);
   document.getElementById('btn-guide')?.addEventListener('click', openGuide);
   document.getElementById('btn-probe')?.addEventListener('click', probeConnection);
+  document.getElementById('btn-save-backend-url')?.addEventListener('click', saveBackendUrl);
 }
 
 // ── Modal ──────────────────────────────────────────────────────────────────────

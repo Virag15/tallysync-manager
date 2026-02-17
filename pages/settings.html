@@ -29,7 +29,7 @@
       <div class="card-title">Application Info</div>
     </div>
     <div class="card-body">
-      <div class="form-grid" style="grid-template-columns:repeat(4,1fr);">
+      <div class="form-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:1rem;">
         <div>
           <div class="form-label text-muted">Application</div>
           <div id="info-name" class="fw-600">—</div>
@@ -46,6 +46,14 @@
           <div class="form-label text-muted">Database</div>
           <div id="info-db" class="mono text-xs text-muted" style="word-break:break-all;">—</div>
         </div>
+      </div>
+      <div style="display:flex;gap:0.5rem;align-items:flex-end;flex-wrap:wrap;">
+        <div style="flex:1;min-width:14rem;">
+          <label class="form-label">Backend Server URL</label>
+          <input type="text" id="backend-url" class="form-control" placeholder="http://localhost:8001">
+          <div class="form-hint">Where the TallySync Python server is running. Saved in your browser.</div>
+        </div>
+        <button class="btn btn-primary btn-sm" id="btn-save-backend-url" style="margin-bottom:1.6rem;">Save URL</button>
       </div>
     </div>
   </div>

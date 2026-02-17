@@ -6,4 +6,4 @@
  *
  * LAN example: 'http://192.168.1.10:8001'
  */
-window.TALLYSYNC_API = window.TALLYSYNC_API || 'http://localhost:8001';
+window.TALLYSYNC_API = localStorage.getItem('tallysync_api') || window.TALLYSYNC_API || 'http://localhost:8001';
