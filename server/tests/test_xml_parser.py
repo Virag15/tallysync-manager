@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tally.xml_parser import (
     _parse_xml,
+    _strip_invalid_char_refs,
     parse_companies,
     parse_stock_items,
     parse_ledgers,
@@ -37,6 +38,30 @@ class TestParseXml:
         # Should not raise and should parse with chars stripped
         assert result != {}
         assert "ROOT" in result
+
+    def test_strips_invalid_char_entity_refs(self):
+        # &#8; = backspace, &#x1C; = file separator — both invalid in XML 1.0
+        xml = "<ROOT><NAME>Item&#8;Name&#x1C;Here</NAME></ROOT>"
+        result = _parse_xml(xml)
+        assert result != {}
+        assert result["ROOT"]["NAME"] == "ItemNameHere"
+
+    def test_keeps_valid_char_entity_refs(self):
+        # &#65; = 'A', &#x26; = '&amp;' — valid, must be preserved
+        xml = "<ROOT><NAME>&#65;mpersand</NAME></ROOT>"
+        result = _parse_xml(xml)
+        assert result["ROOT"]["NAME"] == "Ampersand"
+
+    def test_strip_invalid_char_refs_decimal(self):
+        assert _strip_invalid_char_refs("Hello&#8;World") == "HelloWorld"
+
+    def test_strip_invalid_char_refs_hex(self):
+        assert _strip_invalid_char_refs("Hello&#x1C;World") == "HelloWorld"
+
+    def test_strip_invalid_char_refs_keeps_valid(self):
+        # &#9; = tab (valid), &#10; = newline (valid)
+        s = "Tab&#9;here&#10;newline"
+        assert _strip_invalid_char_refs(s) == s
 
     def test_allows_valid_whitespace_chars(self):
         xml = "<ROOT>\n  <ITEM>\t hello \t</ITEM>\n</ROOT>"

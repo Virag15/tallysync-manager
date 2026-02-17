@@ -403,8 +403,11 @@ const DatePicker = (() => {
 
   document.addEventListener('click', e => {
     if (!_active) return;
-    if (_active.panel.contains(e.target)) return;
-    if (e.target === _active.trigger) return;
+    // Use composedPath() to get the event path captured at dispatch time,
+    // before any DOM mutations that nav/year buttons may have made (innerHTML = '').
+    const path = (e.composedPath && e.composedPath()) || [];
+    if (path.includes(_active.panel))   return;  // click was inside the panel
+    if (path.includes(_active.trigger)) return;  // click was on the trigger button
     _close();
   });
 

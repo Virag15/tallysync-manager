@@ -17,6 +17,25 @@ _INVALID_XML_CHARS = re.compile(
     r"[^\x09\x0A\x0D\x20-\uD7FF\uE000-\uFFFD\U00010000-\U0010FFFF]"
 )
 
+# Numeric character entity references (&#NNN; or &#xHH;) pointing to invalid codepoints.
+# Tally sometimes emits e.g. &#8; (backspace) or &#x1C; (file separator) in item names.
+_CHAR_REF = re.compile(r"&#(?:([0-9]+)|x([0-9A-Fa-f]+));")
+
+def _is_valid_xml_cp(cp: int) -> bool:
+    """True if codepoint is legal in XML 1.0."""
+    return (cp in (0x09, 0x0A, 0x0D)
+            or 0x20 <= cp <= 0xD7FF
+            or 0xE000 <= cp <= 0xFFFD
+            or 0x10000 <= cp <= 0x10FFFF)
+
+def _strip_invalid_char_refs(text: str) -> str:
+    """Remove &#NN; / &#xHH; entity refs that reference invalid XML 1.0 codepoints."""
+    def _sub(m: re.Match) -> str:
+        dec, hex_ = m.group(1), m.group(2)
+        cp = int(dec) if dec is not None else int(hex_, 16)
+        return m.group(0) if _is_valid_xml_cp(cp) else ""
+    return _CHAR_REF.sub(_sub, text)
+
 logger = logging.getLogger("tallysync.xml_parser")
 
 
@@ -60,8 +79,10 @@ def _ensure_list(value: Any) -> List[Any]:
 
 def _parse_xml(xml_text: str) -> Dict:
     try:
-        # Strip characters that are illegal in XML 1.0 (Tally sometimes emits them)
+        # 1. Strip raw bytes that are illegal in XML 1.0 (e.g. 0x01-0x08, 0x0B…)
         clean = _INVALID_XML_CHARS.sub("", xml_text)
+        # 2. Remove numeric char-refs pointing to invalid codepoints (e.g. &#8; &#x1C;)
+        clean = _strip_invalid_char_refs(clean)
         return xmltodict.parse(clean, force_list=False)
     except Exception as exc:
         logger.error("XML parse error: %s | raw: %.200s", exc, xml_text)
