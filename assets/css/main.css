@@ -1008,3 +1008,34 @@ kbd {
 .ob-field label { font-size: 0.8125rem; font-weight: 500; color: var(--foreground); }
 .ob-row { display: flex; gap: 0.75rem; }
 .ob-hidden { display: none !important; }
+
+/* ── Quick Start Launchers ───────────────────────────────────────────────── */
+.launcher-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 1rem 0;
+}
+@media (max-width: 640px) { .launcher-grid { grid-template-columns: 1fr; } }
+
+.launcher-card {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 1.25rem; display: flex; flex-direction: column; gap: 0.875rem;
+  background: var(--card);
+}
+.launcher-icon {
+  width: 48px; height: 48px; border-radius: 12px;
+  background: var(--muted); display: flex; align-items: center; justify-content: center;
+  color: var(--primary); flex-shrink: 0;
+}
+.launcher-content { flex: 1; }
+.launcher-title { font-size: 0.9375rem; font-weight: 600; color: var(--foreground); margin-bottom: 0.25rem; }
+.launcher-desc  { font-size: 0.8125rem; color: var(--muted-foreground); margin-bottom: 0.75rem; line-height: 1.5; }
+.launcher-steps { margin: 0; padding-left: 1.25rem; font-size: 0.8125rem; color: var(--foreground); display: flex; flex-direction: column; gap: 0.3rem; }
+.launcher-steps li { line-height: 1.5; }
+.launcher-detail-btn { align-self: flex-start; }
+
+.launcher-autostart-note {
+  display: flex; align-items: flex-start; gap: 0.5rem;
+  font-size: 0.8125rem; color: var(--muted-foreground);
+  background: var(--muted); border-radius: var(--radius);
+  padding: 0.625rem 0.875rem; margin-top: 0.25rem; line-height: 1.6;
+}
+.launcher-autostart-note svg { flex-shrink: 0; margin-top: 2px; }
