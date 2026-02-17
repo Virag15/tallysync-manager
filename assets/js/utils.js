@@ -273,9 +273,10 @@ function debounce(fn, ms = 300) {
 function exportCSV(rows, filename = 'export.csv') {
   if (!rows.length) { toast('Nothing to export', 'warning'); return; }
   const headers = Object.keys(rows[0]);
-  const csv = [headers.join(','), ...rows.map(r => headers.map(h => JSON.stringify(r[h] ?? '')).join(','))].join('\n');
+  const cell = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  const csv = [headers.map(cell).join(','), ...rows.map(r => headers.map(h => cell(r[h])).join(','))].join('\r\n');
   const a = Object.assign(document.createElement('a'), {
-    href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })),
+    href: URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })),
     download: filename,
   });
   a.click();

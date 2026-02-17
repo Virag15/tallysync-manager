@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from datetime import date
 from typing import List, Optional
+from xml.sax.saxutils import escape as _xe
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -27,7 +28,7 @@ def _export_envelope(report_name: str, company_name: str, extra_vars: str = "") 
         <REPORTNAME>{report_name}</REPORTNAME>
         <STATICVARIABLES>
           <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
-          <SVCURRENTCOMPANY>{company_name}</SVCURRENTCOMPANY>
+          <SVCURRENTCOMPANY>{_xe(company_name)}</SVCURRENTCOMPANY>
           {extra_vars}
         </STATICVARIABLES>
       </REQUESTDESC>
@@ -46,7 +47,7 @@ def _import_envelope(company_name: str, message_body: str) -> str:
       <REQUESTDESC>
         <REPORTNAME>Vouchers</REPORTNAME>
         <STATICVARIABLES>
-          <SVCURRENTCOMPANY>{company_name}</SVCURRENTCOMPANY>
+          <SVCURRENTCOMPANY>{_xe(company_name)}</SVCURRENTCOMPANY>
         </STATICVARIABLES>
       </REQUESTDESC>
       <REQUESTDATA>
@@ -106,7 +107,7 @@ def build_get_vouchers(
         company_name,
         f"""<SVFROMDATE>{_tally_date(from_date)}</SVFROMDATE>
           <SVTODATE>{_tally_date(to_date)}</SVTODATE>
-          <SVVOUCHERTYPE>{voucher_type}</SVVOUCHERTYPE>""",
+          <SVVOUCHERTYPE>{_xe(voucher_type)}</SVVOUCHERTYPE>""",
     )
 
 
@@ -145,23 +146,23 @@ def build_push_sales_order(
     for line in lines:
         inventory_xml += f"""
           <INVENTORYENTRIES.LIST>
-            <STOCKITEMNAME>{line.stock_item_name}</STOCKITEMNAME>
+            <STOCKITEMNAME>{_xe(line.stock_item_name)}</STOCKITEMNAME>
             <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
-            <RATE>{line.rate:.4f}/{line.uom}</RATE>
+            <RATE>{line.rate:.4f}/{_xe(line.uom)}</RATE>
             <AMOUNT>-{abs(line.amount):.2f}</AMOUNT>
-            <ACTUALQTY>{line.quantity:.4f} {line.uom}</ACTUALQTY>
-            <BILLEDQTY>{line.quantity:.4f} {line.uom}</BILLEDQTY>
+            <ACTUALQTY>{line.quantity:.4f} {_xe(line.uom)}</ACTUALQTY>
+            <BILLEDQTY>{line.quantity:.4f} {_xe(line.uom)}</BILLEDQTY>
           </INVENTORYENTRIES.LIST>"""
 
     voucher_xml = f"""<VOUCHER VCHTYPE="Sales Order" ACTION="Create" OBJVIEW="Order Voucher View">
             <DATE>{_tally_date(order_date)}</DATE>
             <EFFECTIVEDATE>{_tally_date(order_date)}</EFFECTIVEDATE>
             <VOUCHERTYPENAME>Sales Order</VOUCHERTYPENAME>
-            <VOUCHERNUMBER>{order_number}</VOUCHERNUMBER>
-            <PARTYLEDGERNAME>{party_name}</PARTYLEDGERNAME>
-            <NARRATION>{narration}</NARRATION>
+            <VOUCHERNUMBER>{_xe(order_number)}</VOUCHERNUMBER>
+            <PARTYLEDGERNAME>{_xe(party_name)}</PARTYLEDGERNAME>
+            <NARRATION>{_xe(narration)}</NARRATION>
             <ALLLEDGERENTRIES.LIST>
-              <LEDGERNAME>{party_name}</LEDGERNAME>
+              <LEDGERNAME>{_xe(party_name)}</LEDGERNAME>
               <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
               <AMOUNT>{total:.2f}</AMOUNT>
             </ALLLEDGERENTRIES.LIST>
@@ -184,23 +185,23 @@ def build_push_purchase_order(
     for line in lines:
         inventory_xml += f"""
           <INVENTORYENTRIES.LIST>
-            <STOCKITEMNAME>{line.stock_item_name}</STOCKITEMNAME>
+            <STOCKITEMNAME>{_xe(line.stock_item_name)}</STOCKITEMNAME>
             <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
-            <RATE>{line.rate:.4f}/{line.uom}</RATE>
+            <RATE>{line.rate:.4f}/{_xe(line.uom)}</RATE>
             <AMOUNT>{abs(line.amount):.2f}</AMOUNT>
-            <ACTUALQTY>{line.quantity:.4f} {line.uom}</ACTUALQTY>
-            <BILLEDQTY>{line.quantity:.4f} {line.uom}</BILLEDQTY>
+            <ACTUALQTY>{line.quantity:.4f} {_xe(line.uom)}</ACTUALQTY>
+            <BILLEDQTY>{line.quantity:.4f} {_xe(line.uom)}</BILLEDQTY>
           </INVENTORYENTRIES.LIST>"""
 
     voucher_xml = f"""<VOUCHER VCHTYPE="Purchase Order" ACTION="Create" OBJVIEW="Order Voucher View">
             <DATE>{_tally_date(order_date)}</DATE>
             <EFFECTIVEDATE>{_tally_date(order_date)}</EFFECTIVEDATE>
             <VOUCHERTYPENAME>Purchase Order</VOUCHERTYPENAME>
-            <VOUCHERNUMBER>{order_number}</VOUCHERNUMBER>
-            <PARTYLEDGERNAME>{party_name}</PARTYLEDGERNAME>
-            <NARRATION>{narration}</NARRATION>
+            <VOUCHERNUMBER>{_xe(order_number)}</VOUCHERNUMBER>
+            <PARTYLEDGERNAME>{_xe(party_name)}</PARTYLEDGERNAME>
+            <NARRATION>{_xe(narration)}</NARRATION>
             <ALLLEDGERENTRIES.LIST>
-              <LEDGERNAME>{party_name}</LEDGERNAME>
+              <LEDGERNAME>{_xe(party_name)}</LEDGERNAME>
               <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
               <AMOUNT>-{abs(total):.2f}</AMOUNT>
             </ALLLEDGERENTRIES.LIST>

@@ -200,12 +200,19 @@ async function saveOrder(status) {
     status,
   };
 
+  const draftBtn   = document.getElementById('btn-save-draft');
+  const confirmBtn = document.getElementById('btn-save-confirm');
+  [draftBtn, confirmBtn].forEach(b => b && (b.disabled = true));
   try {
     if (editId) { await Orders.update(editId, { ...payload, company_id: undefined }); toast('Order updated', 'success'); }
     else        { await Orders.create(payload); toast('Order created', 'success'); }
     closeModal('order-modal');
     loadOrders();
-  } catch (err) { toast('Save failed: ' + err.message, 'error'); }
+  } catch (err) {
+    toast('Save failed: ' + err.message, 'error');
+  } finally {
+    [draftBtn, confirmBtn].forEach(b => b && (b.disabled = false));
+  }
 }
 
 async function pushOrder(id, btn) {
