@@ -113,7 +113,8 @@ app.include_router(ledgers.router,   dependencies=_auth)
 app.include_router(orders.router,    dependencies=_auth)
 app.include_router(reports.router,   dependencies=_auth)
 app.include_router(vouchers.router,  dependencies=_auth)
-app.include_router(events.router,    dependencies=_auth)
+# Events (SSE) is intentionally public — EventSource cannot send custom headers
+app.include_router(events.router)
 
 
 # ─── Info Endpoint ────────────────────────────────────────────────────────────

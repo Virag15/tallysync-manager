@@ -6,7 +6,7 @@
  * Handles reconnects and fires custom DOM events on sync completion.
  */
 
-const SSE_URL = 'http://localhost:8001/api/events';
+const SSE_URL = `${API_BASE}/api/events`;
 const RETRY_DELAY_MS = 5000;
 
 let _sse = null;
