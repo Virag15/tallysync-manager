@@ -66,50 +66,31 @@ jobs:
           New-Item -ItemType Directory -Path "$PKG\server-bin\data" -Force | Out-Null
           New-Item -ItemType Directory -Path "$PKG\setup"            -Force | Out-Null
 
-          Copy-Item "dist\bin\tallysync-server.exe" "$PKG\server-bin\"
-          Copy-Item -Recurse "pages"                "$PKG\pages"
-          Copy-Item -Recurse "assets"               "$PKG\assets"
+          Copy-Item "dist\bin\tallysync-server.exe"          "$PKG\server-bin\"
+          Copy-Item -Recurse "pages"                          "$PKG\pages"
+          Copy-Item -Recurse "assets"                         "$PKG\assets"
 
           # Copy setup scripts
+          Copy-Item "setup\start-binary.bat"                  "$PKG\setup\start.bat"
           if (Test-Path "setup\install-autostart-windows.bat") {
-            Copy-Item "setup\install-autostart-windows.bat" "$PKG\setup\"
+            Copy-Item "setup\install-autostart-windows.bat"   "$PKG\setup\"
           }
 
-          # Write start.bat (binary-only, no Python required)
-          $startBat = @'
-@echo off
-title TallySync Manager
-set "ROOT=%~dp0.."
-set "LOG=%ROOT%\server-bin\data\logs"
-if not exist "%LOG%" mkdir "%LOG%"
-echo  Starting TallySync Manager...
-start /b "" "%ROOT%\server-bin\tallysync-server.exe" > "%LOG%\tallysync.log" 2>&1
-echo  Waiting for server...
-timeout /t 4 /nobreak >nul
-start "" "http://localhost:8001/pages/dashboard.html"
-echo.
-echo  TallySync Manager is running at http://localhost:8001
-echo  Close this window to stop the server.
-echo.
-pause
-'@
-          $startBat | Set-Content "$PKG\setup\start.bat" -Encoding utf8
-
-          # Write README
-          $readme = @"
-TallySync Manager - Windows Quick Start
-=========================================
-
-1. Double-click: setup\start.bat
-   This starts the server and opens your browser automatically.
-
-2. To auto-start at Windows login:
-   Run: setup\install-autostart-windows.bat
-
-Requirements: Windows 10+ (no Python required)
-Version: $VERSION
-"@
-          $readme | Set-Content "$PKG\README.txt" -Encoding utf8
+          # Write README using an array (avoids here-string YAML issues)
+          @(
+            "TallySync Manager - Windows Quick Start",
+            "=========================================",
+            "",
+            "1. Double-click: setup\start.bat",
+            "   The server starts and your browser opens automatically.",
+            "",
+            "2. To auto-start at Windows login (run once):",
+            "   Double-click: setup\install-autostart-windows.bat",
+            "   (Run as Administrator if prompted)",
+            "",
+            "Requirements: Windows 10+ (no Python required)",
+            "Version: $VERSION"
+          ) | Set-Content "$PKG\README.txt" -Encoding utf8
 
           # Zip the package
           Compress-Archive -Path $PKG -DestinationPath "dist\TallySync-v$VERSION-Windows.zip" -Force
@@ -182,37 +163,28 @@ Version: $VERSION
           cp -r pages  "$PKG/"
           cp -r assets "$PKG/"
 
-          # Copy setup scripts if they exist
-          [ -f "setup/start.sh" ]                       && cp "setup/start.sh" "$PKG/setup/"
-          [ -f "setup/install-autostart-macos.sh" ]     && cp "setup/install-autostart-macos.sh" "$PKG/setup/"
-          [ -f "setup/com.tallysync.manager.plist" ]    && cp "setup/com.tallysync.manager.plist" "$PKG/setup/"
+          # Copy setup scripts (start.sh auto-detects binary vs venv)
+          [ -f "setup/start.sh" ]                    && cp "setup/start.sh" "$PKG/setup/" && chmod +x "$PKG/setup/start.sh"
+          [ -f "setup/install-autostart-macos.sh" ]  && cp "setup/install-autostart-macos.sh" "$PKG/setup/"
+          [ -f "setup/com.tallysync.manager.plist" ] && cp "setup/com.tallysync.manager.plist" "$PKG/setup/"
+          [ -d "TallySync.app" ]                     && cp -r "TallySync.app" "$PKG/"
 
-          # Copy macOS app bundle if present
-          [ -d "TallySync.app" ] && cp -r "TallySync.app" "$PKG/"
-
-          # Update start.sh to use binary instead of python
-          if [ -f "$PKG/setup/start.sh" ]; then
-            sed -i '' 's|.venv/bin/python main.py|./tallysync-server|g' "$PKG/setup/start.sh" || true
-          fi
-
-          cat > "$PKG/README.txt" <<EOF
-TallySync Manager — macOS Quick Start
-======================================
-
-Option A — Double-click launcher (easiest):
-  Open TallySync.app
-
-Option B — Terminal:
-  1. cd into this folder
-  2. chmod +x setup/start.sh
-  3. ./setup/start.sh
-
-Option C — Auto-start at login:
-  ./setup/install-autostart-macos.sh
-
-Requirements: macOS 12+ (Monterey or later)
-Version: $VERSION
-EOF
+          # Write README using printf (avoids heredoc YAML indentation issues)
+          printf '%s\n' \
+            "TallySync Manager - macOS Quick Start" \
+            "======================================" \
+            "" \
+            "Option A - Double-click launcher (easiest):" \
+            "  Open TallySync.app" \
+            "" \
+            "Option B - Terminal:" \
+            "  chmod +x setup/start.sh && ./setup/start.sh" \
+            "" \
+            "Option C - Auto-start at login:" \
+            "  ./setup/install-autostart-macos.sh" \
+            "" \
+            "Requirements: macOS 12+ (no Python required)" \
+            "Version: $VERSION" > "$PKG/README.txt"
 
           cd dist
           zip -r "TallySync-v${VERSION}-macOS.zip" "TallySync-v${VERSION}-macOS" -x "*.DS_Store"
