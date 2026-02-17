@@ -23,11 +23,16 @@ async function loadAppInfo() {
     document.getElementById('info-version').textContent = info.version;
     document.getElementById('info-build').textContent   = info.build;
     document.getElementById('info-db').textContent      = info.db_path;
-    // Auto-fill API key from server if not already in localStorage
+    // Auto-save key on first run so users don't need to manually click Save
     if (!storedKey && info.api_key) {
       document.getElementById('api-key').value = info.api_key;
+      localStorage.setItem('tallysync_api_key', info.api_key);
+      // Also ensure window.TALLYSYNC_API reflects the current URL
+      const currentUrl = document.getElementById('backend-url').value.trim().replace(/\/$/, '');
+      if (currentUrl) localStorage.setItem('tallysync_api', currentUrl);
+      toast('Connected! API key saved automatically.', 'success');
     }
-  } catch (_) { toast('Cannot reach server — enter Backend URL and API Key manually', 'warning'); }
+  } catch (_) { toast('Cannot reach server — check Backend URL in Settings', 'warning'); }
 }
 
 function saveConnection() {

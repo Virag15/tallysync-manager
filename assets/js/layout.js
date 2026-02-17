@@ -98,4 +98,43 @@ function injectLayout(pageTitle = 'Dashboard') {
 
   setActiveNav();
   initCompanySelector();
+  _checkFirstRun();
+}
+
+function _checkFirstRun() {
+  // Show a banner if the API key hasn't been saved yet (first-run or cleared localStorage)
+  if (localStorage.getItem('tallysync_api_key')) return;
+
+  // Try to auto-bootstrap: fetch /api/info (public) and save the key silently
+  fetch((localStorage.getItem('tallysync_api') || 'http://localhost:8001') + '/api/info')
+    .then(r => r.json())
+    .then(info => {
+      if (info.api_key) {
+        localStorage.setItem('tallysync_api_key', info.api_key);
+        const url = (localStorage.getItem('tallysync_api') || 'http://localhost:8001');
+        localStorage.setItem('tallysync_api', url);
+        // Reload so all subsequent API calls include the key
+        location.reload();
+      }
+    })
+    .catch(() => {
+      // Server not reachable — show banner pointing to Settings
+      const banner = document.createElement('div');
+      banner.id = 'setup-banner';
+      banner.style.cssText = [
+        'position:fixed;top:0;left:0;right:0;z-index:10000',
+        'background:oklch(0.97 0.02 27)',
+        'border-bottom:1px solid oklch(0.577 0.245 27 / 40%)',
+        'color:var(--destructive,#dc2626)',
+        'padding:0.5rem 1rem',
+        'font-size:0.8125rem',
+        'display:flex;align-items:center;gap:0.75rem',
+      ].join(';');
+      banner.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        <span>Cannot reach the backend server. <a href="settings.html" style="color:inherit;font-weight:600;text-decoration:underline;">Go to Settings</a> to configure the Backend URL.</span>
+        <button onclick="document.getElementById('setup-banner').remove()" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:1rem;line-height:1;">&times;</button>
+      `;
+      document.body.prepend(banner);
+    });
 }
