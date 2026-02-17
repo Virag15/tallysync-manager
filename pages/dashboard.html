@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard — TallySync Manager</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.54.0/dist/apexcharts.min.js"></script>
+</head>
+<body>
+<div id="page-content">
+
+  <div class="page-header">
+    <h1>Dashboard</h1>
+    <div class="page-actions">
+      <button class="btn btn-outline btn-sm" id="btn-refresh">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">Today's Orders</div>
+      <div class="kpi-value" id="kpi-orders">—</div>
+    </div>
+    <div class="kpi-card success">
+      <div class="kpi-label">Today's Sales</div>
+      <div class="kpi-value" id="kpi-sales">—</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Today's Purchases</div>
+      <div class="kpi-value" id="kpi-purchase">—</div>
+    </div>
+    <div class="kpi-card warning">
+      <div class="kpi-label">Pending Orders</div>
+      <div class="kpi-value" id="kpi-pending">—</div>
+    </div>
+    <div class="kpi-card danger">
+      <div class="kpi-label">Low Stock Items</div>
+      <div class="kpi-value" id="kpi-lowstock">—</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Inventory Value</div>
+      <div class="kpi-value" id="kpi-invvalue">—</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Last Synced</div>
+      <div class="kpi-value text-sm" id="kpi-synced">—</div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="charts-grid">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Sales — Last 30 Days</div>
+          <div class="card-desc">Daily order value trend</div>
+        </div>
+      </div>
+      <div class="card-body"><div id="chart-sales"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Purchases — Last 30 Days</div>
+          <div class="card-desc">Daily purchase value trend</div>
+        </div>
+      </div>
+      <div class="card-body"><div id="chart-purchases"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Stock by Group</div>
+          <div class="card-desc">Distribution by inventory value</div>
+        </div>
+      </div>
+      <div class="card-body"><div id="chart-stock"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Top Items — Movement</div>
+          <div class="card-desc">By order amount, last 30 days</div>
+        </div>
+      </div>
+      <div class="card-body"><div id="chart-movement"></div></div>
+    </div>
+  </div>
+
+  <!-- Low Stock -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Low Stock Alerts</div>
+        <div class="card-desc">Items below reorder level</div>
+      </div>
+      <a href="inventory.html?low_stock=1" class="btn btn-outline btn-sm">View all</a>
+    </div>
+    <div class="table-wrap" style="border:none;border-radius:0 0 var(--radius) var(--radius);">
+      <table>
+        <thead><tr>
+          <th>Item</th><th>Group</th><th>UOM</th>
+          <th class="text-right">Current Qty</th>
+          <th class="text-right">Reorder Level</th>
+          <th class="text-right">Deficit</th>
+        </tr></thead>
+        <tbody id="low-stock-table"><tr><td colspan="6" style="padding:2rem;text-align:center;"><span class="spinner"></span></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/utils.js"></script>
+<script src="../assets/js/sync.js"></script>
+<script src="../assets/js/layout.js"></script>
+<script src="../assets/js/pages/dashboard.js"></script>
+<script>
+  injectLayout('Dashboard');
+  initDashboard();
+  document.getElementById('btn-refresh')?.addEventListener('click', initDashboard);
+  window.addEventListener('sync:complete', initDashboard);
+  window.addEventListener('company:changed', initDashboard);
+</script>
+</body>
+</html>

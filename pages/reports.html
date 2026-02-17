@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reports — TallySync Manager</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.54.0/dist/apexcharts.min.js"></script>
+</head>
+<body>
+<div id="page-content">
+
+  <div class="page-header">
+    <h1>Reports</h1>
+    <div class="page-actions">
+      <button class="btn btn-outline btn-sm" id="btn-export-report">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+        Export CSV
+      </button>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="card" style="margin-bottom:1rem;">
+    <div class="card-body" style="padding:1rem 1.25rem;">
+      <div class="filter-bar" style="margin-bottom:0;">
+        <select id="report-type" class="filter-select" style="min-width:14rem;">
+          <option value="sales">Sales Report</option>
+          <option value="purchases">Purchase Report</option>
+          <option value="stock-summary">Stock Summary by Group</option>
+          <option value="low-stock">Low Stock</option>
+          <option value="party-outstanding">Party Outstanding</option>
+          <option value="item-movement">Item Movement (Top 20)</option>
+          <option value="party-sales">Party-wise Sales</option>
+        </select>
+        <input type="date" id="report-from">
+        <input type="date" id="report-to">
+        <button class="btn btn-primary" id="btn-run-report">Run Report</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart -->
+  <div class="card" style="margin-bottom:1rem;">
+    <div class="card-header">
+      <div>
+        <div class="card-title" id="report-chart-title">Chart</div>
+        <div class="card-desc" id="report-chart-desc">Select a report and click Run</div>
+      </div>
+    </div>
+    <div class="card-body"><div id="report-chart" style="min-height:16rem;"></div></div>
+  </div>
+
+  <!-- Table -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title" id="report-table-title">Data</div>
+    </div>
+    <div class="table-wrap" style="border:none;border-radius:0 0 var(--radius) var(--radius);">
+      <table>
+        <thead id="report-thead"></thead>
+        <tbody id="report-tbody">
+          <tr><td colspan="10">
+            <div class="empty-state">
+              <div class="empty-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg>
+              </div>
+              <div class="fw-500">Select a report and click Run Report</div>
+            </div>
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/utils.js"></script>
+<script src="../assets/js/date-picker.js"></script>
+<script src="../assets/js/sync.js"></script>
+<script src="../assets/js/layout.js"></script>
+<script src="../assets/js/pages/reports.js"></script>
+<script>
+  injectLayout('Reports');
+  initReports();
+  DatePicker.init('report-from', { placeholder: 'From date' });
+  DatePicker.init('report-to',   { placeholder: 'To date' });
+  window.addEventListener('company:changed', () => {
+    document.getElementById('report-tbody').innerHTML = '';
+    document.getElementById('report-chart').innerHTML = '';
+  });
+</script>
+</body>
+</html>

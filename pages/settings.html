@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Settings — TallySync Manager</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+</head>
+<body>
+<div id="page-content">
+
+  <div class="page-header">
+    <h1>Settings</h1>
+    <div class="page-actions">
+      <button class="btn btn-outline" id="btn-guide">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+        Connection Guide
+      </button>
+      <button class="btn btn-primary" id="btn-add-company">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+        Add Company
+      </button>
+    </div>
+  </div>
+
+  <!-- App Info -->
+  <div class="card" style="margin-bottom:1rem;">
+    <div class="card-header">
+      <div class="card-title">Application Info</div>
+    </div>
+    <div class="card-body">
+      <div class="form-grid" style="grid-template-columns:repeat(4,1fr);">
+        <div>
+          <div class="form-label text-muted">Application</div>
+          <div id="info-name" class="fw-600">—</div>
+        </div>
+        <div>
+          <div class="form-label text-muted">Version</div>
+          <div id="info-version" class="mono">—</div>
+        </div>
+        <div>
+          <div class="form-label text-muted">Build</div>
+          <div id="info-build" class="mono">—</div>
+        </div>
+        <div>
+          <div class="form-label text-muted">Database</div>
+          <div id="info-db" class="mono text-xs text-muted" style="word-break:break-all;">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Companies -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Tally Companies</div>
+        <div class="card-desc">Manage Tally Prime instances and sync settings</div>
+      </div>
+    </div>
+    <div class="table-wrap" style="border:none;border-radius:0 0 var(--radius) var(--radius);">
+      <table>
+        <thead><tr>
+          <th>Name</th><th>Tally Company</th><th>Host</th><th>Port</th>
+          <th>Sync Interval</th><th>Last Synced</th><th>Status</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="companies-table"><tr><td colspan="8" style="padding:2.5rem;text-align:center;"><span class="spinner"></span></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Add / Edit Company Modal -->
+<div class="modal-overlay" id="company-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="company-modal-title">Add Company</div>
+        <div class="modal-desc">Configure a Tally Prime instance</div>
+      </div>
+      <button class="btn-icon" onclick="closeModal('company-modal')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-company-id">
+      <div class="form-group">
+        <label class="form-label">Display Name</label>
+        <input type="text" id="company-name" class="form-control" placeholder="My Company">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tally Company Name
+          <span class="text-muted text-xs">(exact name as in Tally)</span>
+        </label>
+        <input type="text" id="company-tally-name" class="form-control" placeholder="ABC Trading Co.">
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Host / IP</label>
+          <input type="text" id="company-host" class="form-control" placeholder="localhost" value="localhost">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Port</label>
+          <input type="number" id="company-port" class="form-control" value="9000" min="1" max="65535">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Sync Interval (minutes)</label>
+        <input type="number" id="company-interval" class="form-control" value="5" min="1" max="1440">
+        <div class="form-hint">How often to pull data from Tally automatically</div>
+      </div>
+
+      <div id="test-result" style="display:none;padding:0.75rem;border-radius:calc(var(--radius) - 4px);margin-top:0.5rem;font-size:0.8125rem;border:1px solid var(--border);"></div>
+    </div>
+    <div class="modal-footer" style="flex-wrap:wrap;gap:0.5rem;">
+      <button class="btn btn-ghost btn-sm" id="btn-test-conn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg>
+        Test Connection
+      </button>
+      <button class="btn btn-ghost btn-sm" id="btn-test-entry" style="display:none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"/></svg>
+        Send Test Entry
+      </button>
+      <div style="flex:1;"></div>
+      <button class="btn btn-outline" onclick="closeModal('company-modal')">Cancel</button>
+      <button class="btn btn-primary" id="btn-save-company">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sync Logs Modal -->
+<div class="modal-overlay" id="sync-logs-modal">
+  <div class="modal" style="width:42rem;">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">Sync Logs</div>
+        <div class="modal-desc">Recent sync activity for this company</div>
+      </div>
+      <button class="btn-icon" onclick="closeModal('sync-logs-modal')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" style="padding:0;">
+      <div class="table-wrap" style="border:none;border-radius:0;">
+        <table>
+          <thead><tr><th>Type</th><th>Status</th><th class="text-right">Records</th><th class="text-right">Duration</th><th>Started At</th><th>Error</th></tr></thead>
+          <tbody id="sync-logs-table"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Connection Guide Modal -->
+<div class="modal-overlay" id="guide-modal">
+  <div class="modal" style="width:44rem;max-width:96vw;">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">Tally Connection Guide</div>
+        <div class="modal-desc">How to connect TallySync Manager to Tally Prime</div>
+      </div>
+      <button class="btn-icon" onclick="closeModal('guide-modal')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" style="padding:1.25rem 1.5rem;">
+
+      <!-- Step 1: Enable HTTP Server -->
+      <div class="guide-step">
+        <div class="guide-step-num">1</div>
+        <div class="guide-step-body">
+          <div class="guide-step-title">Enable Tally Prime HTTP Server</div>
+          <div class="guide-step-desc">This must be done on the PC where Tally is running.</div>
+          <ol class="guide-list">
+            <li>Open <strong>Tally Prime</strong> and load your company</li>
+            <li>Press <kbd>F12</kbd> → <strong>Advanced Configuration</strong></li>
+            <li>Set <strong>Enable Tally HTTP Server</strong> to <strong>Yes</strong></li>
+            <li>Set <strong>Tally HTTP Port</strong> to <code>9000</code> (or any free port)</li>
+            <li>Press <strong>Accept</strong> — Tally will restart the HTTP listener</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="guide-divider"></div>
+
+      <!-- Step 2a: Same PC -->
+      <div class="guide-step">
+        <div class="guide-step-num">2</div>
+        <div class="guide-step-body">
+          <div class="guide-step-title">Same PC Setup (most common)</div>
+          <div class="guide-step-desc">TallySync and Tally are on the same computer.</div>
+          <div class="guide-config-box">
+            <div class="guide-config-row">
+              <span class="guide-config-label">Host / IP</span>
+              <code class="guide-config-val">localhost</code>
+            </div>
+            <div class="guide-config-row">
+              <span class="guide-config-label">Port</span>
+              <code class="guide-config-val">9000</code>
+            </div>
+          </div>
+          <div class="guide-step-desc" style="margin-top:0.5rem;">No firewall changes needed for same-machine connections.</div>
+        </div>
+      </div>
+
+      <div class="guide-divider"></div>
+
+      <!-- Step 2b: LAN -->
+      <div class="guide-step">
+        <div class="guide-step-num">3</div>
+        <div class="guide-step-body">
+          <div class="guide-step-title">LAN Setup (Tally on a different PC)</div>
+          <div class="guide-step-desc">TallySync runs on your machine, Tally runs on another PC in the same network.</div>
+          <ol class="guide-list">
+            <li>On the <strong>Tally PC</strong>, find its IP: open Command Prompt → type <code>ipconfig</code> → look for <strong>IPv4 Address</strong> (e.g. <code>192.168.1.10</code>)</li>
+            <li>Make sure <strong>port 9000 is allowed</strong> through Windows Firewall on the Tally PC</li>
+            <li>In TallySync, enter that IP as the <strong>Host</strong> and <code>9000</code> as the port</li>
+          </ol>
+          <div class="guide-config-box">
+            <div class="guide-config-row">
+              <span class="guide-config-label">Host / IP</span>
+              <code class="guide-config-val">192.168.1.10</code>
+              <span class="guide-config-note">(Tally PC's IP)</span>
+            </div>
+            <div class="guide-config-row">
+              <span class="guide-config-label">Port</span>
+              <code class="guide-config-val">9000</code>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="guide-divider"></div>
+
+      <!-- Step 3: Multi-company -->
+      <div class="guide-step">
+        <div class="guide-step-num">4</div>
+        <div class="guide-step-body">
+          <div class="guide-step-title">Multi-Company Setup</div>
+          <div class="guide-step-desc">To manage multiple Tally companies, add each one separately in TallySync.</div>
+          <ul class="guide-list">
+            <li>The <strong>Tally Company Name</strong> field must match <em>exactly</em> as it appears in Tally Prime (including capitalisation and spaces)</li>
+            <li>All companies can share the same host and port — Tally serves them all from one HTTP server</li>
+            <li>Each company gets its own sync schedule and cached data in TallySync</li>
+          </ul>
+          <div class="guide-tip">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            To find the exact company name: in Tally, go to <strong>Company → Alter</strong> and copy the name exactly as shown.
+          </div>
+        </div>
+      </div>
+
+      <div class="guide-divider"></div>
+
+      <!-- Quick test -->
+      <div class="guide-step">
+        <div class="guide-step-num">5</div>
+        <div class="guide-step-body">
+          <div class="guide-step-title">Quick Connection Test</div>
+          <div class="guide-step-desc">Test your connection before saving a company.</div>
+          <div style="display:flex;gap:0.75rem;align-items:center;margin-top:0.75rem;flex-wrap:wrap;">
+            <input type="text"   id="probe-host" class="form-control" placeholder="localhost" value="localhost" style="width:11rem;">
+            <input type="number" id="probe-port" class="form-control" value="9000" min="1" max="65535" style="width:6rem;">
+            <button class="btn btn-primary btn-sm" id="btn-probe">Test Now</button>
+          </div>
+          <div id="probe-result" style="display:none;margin-top:0.75rem;padding:0.625rem 0.875rem;border-radius:calc(var(--radius) - 4px);font-size:0.8125rem;border:1px solid var(--border);"></div>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="closeModal('guide-modal')">Got it</button>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/utils.js"></script>
+<script src="../assets/js/sync.js"></script>
+<script src="../assets/js/layout.js"></script>
+<script src="../assets/js/pages/settings.js"></script>
+<script>
+  injectLayout('Settings');
+  initSettings();
+</script>
+</body>
+</html>

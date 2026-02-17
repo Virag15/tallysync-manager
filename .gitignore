@@ -1,0 +1,34 @@
+# Python
+server/.venv/
+server/data/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.env
+.env.*
+
+# macOS
+.DS_Store
+**/.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log
+
+# Claude
+.claude/
+.agent/
