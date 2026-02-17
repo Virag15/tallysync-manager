@@ -473,6 +473,46 @@ select.form-control   {
 .form-grid       { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 .form-grid.cols-3{ grid-template-columns: 1fr 1fr 1fr; }
 
+/* ── Checkbox (shadcn style) ──────────────────────────────────────────────── */
+input[type="checkbox"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1rem;
+  height: 1rem;
+  border: 1.5px solid var(--border);
+  border-radius: 3px;
+  background: var(--background);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 150ms, border-color 150ms;
+  position: relative;
+}
+input[type="checkbox"]:hover  { border-color: var(--ring); }
+input[type="checkbox"]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring);
+}
+input[type="checkbox"]:checked {
+  background: var(--primary);
+  border-color: var(--primary);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+}
+input[type="checkbox"]:disabled { opacity: 0.5; pointer-events: none; }
+
+.check-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--foreground);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
 /* ── Filter Bar ───────────────────────────────────────────────────────────── */
 .filter-bar    { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
 .search-wrap   { position: relative; flex: 1; min-width: 12rem; }
@@ -576,31 +616,50 @@ select.form-control   {
 }
 .empty-icon { font-size: 2rem; opacity: 0.2; }
 
-/* ── Toast ────────────────────────────────────────────────────────────────── */
+/* ── Toast (Sonner-style — bottom-right) ──────────────────────────────────── */
 #toast-container {
-  position: fixed; bottom: 1.5rem; right: 1.5rem;
-  z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; pointer-events: none;
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column-reverse; /* newest on top */
+  gap: 0.5rem;
+  pointer-events: none;
 }
 .toast {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: calc(var(--radius) - 2px);
-  box-shadow: 0 4px 12px oklch(0 0 0 / 10%), 0 1px 2px oklch(0 0 0 / 6%);
-  padding: 0.875rem 1rem;
+  border-radius: var(--radius);
+  box-shadow: 0 4px 20px oklch(0 0 0 / 12%), 0 1px 4px oklch(0 0 0 / 8%);
+  padding: 0.875rem 1rem 0.875rem 0.75rem;
   font-size: 0.875rem;
-  display: flex; align-items: flex-start; gap: 0.625rem;
-  animation: toastIn 180ms ease;
-  min-width: 18rem; max-width: 24rem;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  animation: toastIn 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  min-width: 20rem;
+  max-width: 26rem;
   pointer-events: all;
+  border-left: 3px solid var(--border);
 }
-.toast-icon { flex-shrink: 0; margin-top: 0.0625rem; }
-.toast-title { font-weight: 600; font-size: 0.875rem; }
-.toast-desc  { font-size: 0.8125rem; color: var(--muted-foreground); }
+.toast.success { border-left-color: var(--success); }
+.toast.error   { border-left-color: var(--destructive); }
+.toast.warning { border-left-color: var(--warning); }
+.toast.info    { border-left-color: var(--ring); }
+
+.toast-icon        { flex-shrink: 0; display: flex; }
+.toast-title       { font-weight: 600; font-size: 0.8125rem; line-height: 1.4; }
+.toast-desc        { font-size: 0.75rem; color: var(--muted-foreground); margin-top: 0.125rem; }
 .toast.success .toast-icon { color: var(--success); }
 .toast.error   .toast-icon { color: var(--destructive); }
 .toast.warning .toast-icon { color: var(--warning); }
 .toast.info    .toast-icon { color: var(--ring); }
-@keyframes toastIn { from { transform: translateX(1rem); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+@keyframes toastIn {
+  from { transform: translateY(0.5rem) scale(0.96); opacity: 0; }
+  to   { transform: translateY(0)      scale(1);    opacity: 1; }
+}
 
 /* ── Connection Guide ─────────────────────────────────────────────────────── */
 

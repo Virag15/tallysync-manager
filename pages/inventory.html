@@ -42,8 +42,8 @@
     <select id="inv-group-filter" class="filter-select">
       <option value="">All Groups</option>
     </select>
-    <label class="flex items-center gap-2 text-sm" style="cursor:pointer;">
-      <input type="checkbox" id="inv-low-stock-filter" style="width:1rem;height:1rem;cursor:pointer;">
+    <label class="check-label">
+      <input type="checkbox" id="inv-low-stock-filter">
       Low stock only
     </label>
   </div>
@@ -94,11 +94,13 @@
 <script src="../assets/js/config.js"></script>
 <script src="../assets/js/api.js"></script>
 <script src="../assets/js/utils.js"></script>
+<script src="../assets/js/custom-select.js"></script>
 <script src="../assets/js/sync.js"></script>
 <script src="../assets/js/layout.js"></script>
 <script src="../assets/js/pages/inventory.js"></script>
 <script>
   injectLayout('Inventory');
+  CustomSelect.init('inv-group-filter');
   initInventory();
   window.addEventListener('company:changed', initInventory);
   window.addEventListener('sync:complete', initInventory);

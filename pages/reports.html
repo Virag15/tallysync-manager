@@ -24,7 +24,7 @@
   <div class="card" style="margin-bottom:1rem;">
     <div class="card-body" style="padding:1rem 1.25rem;">
       <div class="filter-bar" style="margin-bottom:0;">
-        <select id="report-type" class="filter-select" style="min-width:14rem;">
+        <select id="report-type" class="filter-select">
           <option value="sales">Sales Report</option>
           <option value="purchases">Purchase Report</option>
           <option value="stock-summary">Stock Summary by Group</option>
@@ -78,12 +78,14 @@
 <script src="../assets/js/config.js"></script>
 <script src="../assets/js/api.js"></script>
 <script src="../assets/js/utils.js"></script>
+<script src="../assets/js/custom-select.js"></script>
 <script src="../assets/js/date-picker.js"></script>
 <script src="../assets/js/sync.js"></script>
 <script src="../assets/js/layout.js"></script>
 <script src="../assets/js/pages/reports.js"></script>
 <script>
   injectLayout('Reports');
+  CustomSelect.init('report-type', { minWidth: '14rem' });
   initReports();
   DatePicker.init('report-from', { placeholder: 'From date' });
   DatePicker.init('report-to',   { placeholder: 'To date' });

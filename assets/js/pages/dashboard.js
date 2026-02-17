@@ -6,12 +6,18 @@
 let _salesChart, _purchaseChart, _stockChart, _movementChart;
 
 const CHART_BASE = {
-  chart:      { fontFamily: "'Inter', ui-sans-serif, sans-serif", toolbar: { show: false }, height: 220 },
-  grid:       { borderColor: 'oklch(0.92 0.004 286.32)', strokeDashArray: 4 },
+  chart:      { fontFamily: "'Inter', ui-sans-serif, sans-serif", toolbar: { show: false }, height: 220, background: 'transparent', sparkline: { enabled: false } },
+  grid:       { borderColor: '#f0f0f0', strokeDashArray: 3, padding: { left: 4, right: 4 } },
   dataLabels: { enabled: false },
-  xaxis:      { labels: { style: { fontSize: '11px', colors: 'oklch(0.552 0.016 285.938)' } }, axisBorder: { show: false }, axisTicks: { show: false } },
-  yaxis:      { labels: { style: { fontSize: '11px', colors: 'oklch(0.552 0.016 285.938)' }, formatter: v => '₹' + (v >= 1e5 ? (v/1e5).toFixed(1)+'L' : Number(v).toFixed(0)) } },
+  xaxis:      {
+    labels: { style: { fontSize: '11px', colors: '#a1a1aa' } },
+    axisBorder: { show: false }, axisTicks: { show: false },
+  },
+  yaxis:      {
+    labels: { style: { fontSize: '11px', colors: '#a1a1aa' }, formatter: v => '₹' + (v >= 1e5 ? (v/1e5).toFixed(1)+'L' : Number(v).toFixed(0)) },
+  },
   tooltip:    { theme: 'light', y: { formatter: v => fmt.currency(v) } },
+  markers:    { size: 0, hover: { size: 4 } },
 };
 
 async function initDashboard() {
@@ -56,8 +62,8 @@ function renderSalesChart(data) {
     chart: { ...CHART_BASE.chart, type: 'area' },
     series: [{ name: 'Sales (₹)', data: data.map(d => parseFloat(d.total_amount)) }],
     xaxis: { ...CHART_BASE.xaxis, categories: data.map(d => d.date.slice(5)) },
-    colors: ['oklch(0.21 0.006 285.885)'],
-    fill:   { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.15, opacityTo: 0.01 } },
+    colors: ['#18181b'],
+    fill:   { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.18, opacityTo: 0.0, stops: [0, 95] } },
     stroke: { curve: 'smooth', width: 2 },
   });
   _salesChart.render();
@@ -72,8 +78,8 @@ function renderPurchaseChart(data) {
     chart: { ...CHART_BASE.chart, type: 'area' },
     series: [{ name: 'Purchases (₹)', data: data.map(d => parseFloat(d.total_amount)) }],
     xaxis: { ...CHART_BASE.xaxis, categories: data.map(d => d.date.slice(5)) },
-    colors: ['oklch(0.527 0.154 150.069)'],
-    fill:   { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.15, opacityTo: 0.01 } },
+    colors: ['#16a34a'],
+    fill:   { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.18, opacityTo: 0.0, stops: [0, 95] } },
     stroke: { curve: 'smooth', width: 2 },
   });
   _purchaseChart.render();
@@ -88,11 +94,12 @@ function renderStockChart(data) {
     chart: { type: 'donut', height: 220, fontFamily: "'Inter', sans-serif" },
     series: top.map(d => d.total_value),
     labels: top.map(d => d.group),
-    legend: { position: 'bottom', fontSize: '12px' },
+    legend: { position: 'bottom', fontSize: '11px', fontFamily: "'Inter', sans-serif", labels: { colors: '#71717a' } },
     dataLabels: { enabled: false },
     tooltip:    { y: { formatter: v => fmt.currency(v) } },
-    plotOptions: { pie: { donut: { size: '58%' } } },
-    colors: ['#18181b','#3f3f46','#71717a','#a1a1aa','#d4d4d8','#e4e4e7','#f4f4f5','#fafafa'],
+    plotOptions: { pie: { donut: { size: '62%', labels: { show: false } } } },
+    colors: ['#18181b','#3f3f46','#52525b','#71717a','#a1a1aa','#d4d4d8','#e4e4e7','#f4f4f5'],
+    stroke: { width: 0 },
   });
   _stockChart.render();
 }
@@ -104,10 +111,10 @@ function renderMovementChart(data) {
   _movementChart = new ApexCharts(el, {
     ...CHART_BASE,
     chart: { ...CHART_BASE.chart, type: 'bar' },
-    plotOptions: { bar: { horizontal: true, borderRadius: 3, barHeight: '60%' } },
+    plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '55%' } },
     series: [{ name: 'Amount', data: data.map(d => d.total_amount) }],
     xaxis: { ...CHART_BASE.xaxis, categories: data.map(d => d.name.length > 22 ? d.name.slice(0,20)+'…' : d.name) },
-    colors: ['oklch(0.21 0.006 285.885)'],
+    colors: ['#18181b'],
   });
   _movementChart.render();
 }

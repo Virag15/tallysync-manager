@@ -24,6 +24,7 @@ async function initInventory() {
     const gf = document.getElementById('inv-group-filter');
     gf.innerHTML = '<option value="">All Groups</option>' +
       groups.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('');
+    CustomSelect.refresh('inv-group-filter');
   } catch (_) {}
 
   await loadInventory();

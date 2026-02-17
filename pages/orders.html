@@ -150,6 +150,7 @@
 <script src="../assets/js/config.js"></script>
 <script src="../assets/js/api.js"></script>
 <script src="../assets/js/utils.js"></script>
+<script src="../assets/js/custom-select.js"></script>
 <script src="../assets/js/date-picker.js"></script>
 <script src="../assets/js/sync.js"></script>
 <script src="../assets/js/layout.js"></script>
@@ -157,6 +158,9 @@
 <script>
   injectLayout('Orders');
   initOrders();
+  CustomSelect.init('order-type-filter');
+  CustomSelect.init('order-status-filter');
+  CustomSelect.init('order-type');
   DatePicker.init('order-from', { placeholder: 'From date' });
   DatePicker.init('order-to',   { placeholder: 'To date' });
   window.addEventListener('company:changed', initOrders);

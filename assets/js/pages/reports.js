@@ -69,7 +69,7 @@ async function renderSalesReport(companyId, from, to) {
   renderLineChart(
     data.map(d => d.date.slice(5)),
     [{ name: 'Sales (₹)', data: data.map(d => d.total_amount) }],
-    '#1a56db'
+    '#18181b'
   );
 
   document.getElementById('report-thead').innerHTML = `<tr><th>Date</th><th class="text-right">Orders</th><th class="text-right">Total Amount</th></tr>`;
@@ -92,7 +92,7 @@ async function renderPurchasesReport(companyId, from, to) {
   renderLineChart(
     data.map(d => d.date.slice(5)),
     [{ name: 'Purchases (₹)', data: data.map(d => d.total_amount) }],
-    '#10b981'
+    '#16a34a'
   );
 
   document.getElementById('report-thead').innerHTML = `<tr><th>Date</th><th class="text-right">Orders</th><th class="text-right">Total Amount</th></tr>`;
@@ -175,7 +175,7 @@ async function renderPartySales(companyId, from, to) {
   document.getElementById('report-chart-title').textContent = 'Top Parties by Sales';
   document.getElementById('report-table-title').textContent = 'Party-wise Sales';
 
-  renderBarChart(data.map(d => d.party), data.map(d => d.total_amount), '#f59e0b');
+  renderBarChart(data.map(d => d.party), data.map(d => d.total_amount), '#2563eb');
 
   document.getElementById('report-thead').innerHTML = `<tr><th>Party</th><th class="text-right">Orders</th><th class="text-right">Total Amount</th></tr>`;
   document.getElementById('report-tbody').innerHTML = data.length
@@ -192,15 +192,16 @@ async function renderPartySales(companyId, from, to) {
 function renderLineChart(categories, series, color) {
   if (_reportChart) { _reportChart.destroy(); }
   _reportChart = new ApexCharts(document.getElementById('report-chart'), {
-    chart: { type: 'area', height: 280, fontFamily: 'inherit', toolbar: { show: false } },
+    chart: { type: 'area', height: 280, fontFamily: "'Inter', sans-serif", toolbar: { show: false }, background: 'transparent' },
     series, colors: [color],
-    xaxis: { categories, labels: { style: { fontSize: '11px' } } },
-    yaxis: { labels: { formatter: v => '₹' + (v >= 1e5 ? (v/1e5).toFixed(1)+'L' : v.toFixed(0)) } },
-    fill:  { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: .4, opacityTo: .05 } },
+    xaxis: { categories, labels: { style: { fontSize: '11px', colors: '#a1a1aa' } }, axisBorder: { show: false }, axisTicks: { show: false } },
+    yaxis: { labels: { style: { fontSize: '11px', colors: '#a1a1aa' }, formatter: v => '₹' + (v >= 1e5 ? (v/1e5).toFixed(1)+'L' : v.toFixed(0)) } },
+    fill:  { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.18, opacityTo: 0.0, stops: [0, 95] } },
     stroke: { curve: 'smooth', width: 2 },
-    grid:  { borderColor: '#e2e8f0', strokeDashArray: 3 },
+    grid:  { borderColor: '#f0f0f0', strokeDashArray: 3, padding: { left: 4, right: 4 } },
     dataLabels: { enabled: false },
-    tooltip: { y: { formatter: v => fmt.currency(v) } },
+    markers: { size: 0, hover: { size: 4 } },
+    tooltip: { theme: 'light', y: { formatter: v => fmt.currency(v) } },
   });
   _reportChart.render();
 }
@@ -208,26 +209,33 @@ function renderLineChart(categories, series, color) {
 function renderDonutChart(labels, series) {
   if (_reportChart) { _reportChart.destroy(); }
   _reportChart = new ApexCharts(document.getElementById('report-chart'), {
-    chart: { type: 'donut', height: 280, fontFamily: 'inherit' },
+    chart: { type: 'donut', height: 280, fontFamily: "'Inter', sans-serif", background: 'transparent' },
     series, labels,
-    legend: { position: 'bottom' },
+    legend: { position: 'bottom', fontSize: '11px', labels: { colors: '#71717a' } },
     dataLabels: { enabled: false },
+    plotOptions: { pie: { donut: { size: '62%' } } },
+    colors: ['#18181b','#3f3f46','#52525b','#71717a','#a1a1aa','#d4d4d8','#16a34a','#2563eb'],
+    stroke: { width: 0 },
     tooltip: { y: { formatter: v => fmt.currency(v) } },
   });
   _reportChart.render();
 }
 
-function renderBarChart(categories, data, color = '#1a56db') {
+function renderBarChart(categories, data, color = '#18181b') {
   if (_reportChart) { _reportChart.destroy(); }
   _reportChart = new ApexCharts(document.getElementById('report-chart'), {
-    chart: { type: 'bar', height: 280, fontFamily: 'inherit', toolbar: { show: false } },
-    plotOptions: { bar: { horizontal: true, borderRadius: 4 } },
+    chart: { type: 'bar', height: 280, fontFamily: "'Inter', sans-serif", toolbar: { show: false }, background: 'transparent' },
+    plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '55%' } },
     series: [{ name: 'Amount', data }],
     colors: [color],
-    xaxis: { categories: categories.map(c => c.length > 22 ? c.slice(0, 20) + '…' : c), labels: { formatter: v => '₹' + (v >= 1e5 ? (v/1e5).toFixed(1)+'L' : Number(v).toFixed(0)) } },
+    xaxis: {
+      categories: categories.map(c => c.length > 22 ? c.slice(0, 20) + '…' : c),
+      labels: { style: { fontSize: '11px', colors: '#a1a1aa' }, formatter: v => '₹' + (v >= 1e5 ? (v/1e5).toFixed(1)+'L' : Number(v).toFixed(0)) },
+      axisBorder: { show: false }, axisTicks: { show: false },
+    },
     dataLabels: { enabled: false },
-    grid: { borderColor: '#e2e8f0' },
-    tooltip: { y: { formatter: v => fmt.currency(v) } },
+    grid: { borderColor: '#f0f0f0', strokeDashArray: 3 },
+    tooltip: { theme: 'light', y: { formatter: v => fmt.currency(v) } },
   });
   _reportChart.render();
 }
