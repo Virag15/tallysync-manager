@@ -1,68 +1,71 @@
 ======================================================
-  TallySync Manager — Server Setup Guide
+  TallySync Manager — Setup Guide
 ======================================================
 
-WHAT THIS FOLDER CONTAINS
---------------------------
-  start.bat                   Windows: start the server manually
-  start.sh                    macOS/Linux: start the server manually
-  install-autostart-windows.bat  Windows: auto-start at login (run once)
-  install-autostart-macos.sh     macOS: auto-start at login (run once)
+WINDOWS (Binary — no Python required)
+--------------------------------------
+1. Double-click:  setup\start.bat
+   The server starts and your browser opens automatically.
+
+2. To start automatically at Windows login (run once):
+   Double-click:  setup\install-autostart-windows.bat
+   (Run as Administrator if prompted)
+
+   To remove auto-start:
+   schtasks /Delete /TN "TallySync Manager" /F
 
 
-FIRST-TIME SETUP
-----------------
-Before starting, make sure Python dependencies are installed.
+MACOS (Binary — no Python required)
+-------------------------------------
+1. Open the TallySync.app launcher  — OR —
+   In Terminal:
+     chmod +x setup/start.sh
+     ./setup/start.sh
 
-  Windows:
-    Open Command Prompt in the "server" folder and run:
-      python -m venv .venv
-      .venv\Scripts\pip install -r requirements.txt
+2. To start automatically at login (run once):
+   ./setup/install-autostart-macos.sh
 
-  macOS / Linux:
-    Open Terminal in the "server" folder and run:
-      python3 -m venv .venv
-      .venv/bin/pip install -r requirements.txt
-
-
-STARTING THE SERVER
--------------------
-  Windows:  Double-click  setup\start.bat
-  macOS:    Run           ./setup/start.sh
-
-  The server runs on http://localhost:8001 by default.
-
-
-AUTO-START AT LOGIN (optional)
--------------------------------
-  Windows:
-    Double-click  setup\install-autostart-windows.bat
-    (Run as Administrator if prompted)
-
-  macOS:
-    chmod +x setup/install-autostart-macos.sh
-    ./setup/install-autostart-macos.sh
+   To remove:
+   launchctl unload ~/Library/LaunchAgents/com.tallysync.manager.plist
 
 
 OPENING THE APP
 ---------------
-  Open your web browser and go to:
-    http://localhost:5500   (if using VS Code Live Server)
-    file:///path/to/Tally/pages/dashboard.html  (open directly)
-    https://tallysync-manager.vercel.app        (hosted version)
+After starting, go to:  http://localhost:8001/pages/dashboard.html
 
-  On first open, go to Settings and:
-    1. Enter the Backend Server URL  (e.g.  http://localhost:8001)
-    2. The API Key will be loaded automatically from the server.
-    3. Click Save — the page will reload and connect.
+This URL opens automatically when you use start.bat / start.sh.
+The same server serves both the API (port 8001) and the dashboard.
+
+On first open → go to Settings:
+  1. The API Key is loaded automatically.
+  2. If asked for a Backend URL, enter:  http://localhost:8001
+
+
+DEVELOPER / SOURCE INSTALL
+---------------------------
+Requires Python 3.10+
+
+  Windows (Command Prompt in "server" folder):
+    python -m venv .venv
+    .venv\Scripts\pip install -r requirements.txt
+    python main.py
+
+  macOS / Linux (Terminal in "server" folder):
+    python3 -m venv .venv
+    .venv/bin/pip install -r requirements.txt
+    python3 main.py
+
+  The setup\start.bat and setup/start.sh scripts auto-detect
+  whether a binary or Python venv is present.
 
 
 CHANGING THE PORT
 -----------------
-  Create a file called  server/.env  and add:
-    PORT=8002
+Create a file called  server/.env  and add:
+  PORT=8002
 
-  The server will use port 8002 on next start.
+The server will use port 8002 on next start.
+Update the URL in your browser accordingly.
 
 
 SUPPORT

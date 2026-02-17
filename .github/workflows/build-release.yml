@@ -75,20 +75,21 @@ jobs:
             Copy-Item "setup\install-autostart-windows.bat" "$PKG\setup\"
           }
 
-          # Write start.bat (uses the binary, not python)
+          # Write start.bat (binary-only, no Python required)
           $startBat = @'
 @echo off
 title TallySync Manager
 set "ROOT=%~dp0.."
 set "LOG=%ROOT%\server-bin\data\logs"
 if not exist "%LOG%" mkdir "%LOG%"
+echo  Starting TallySync Manager...
 start /b "" "%ROOT%\server-bin\tallysync-server.exe" > "%LOG%\tallysync.log" 2>&1
-start /b "" python -m http.server 3000 --directory "%ROOT%" > "%LOG%\frontend.log" 2>&1
-timeout /t 3 /nobreak >nul
-start "" "http://localhost:3000"
+echo  Waiting for server...
+timeout /t 4 /nobreak >nul
+start "" "http://localhost:8001/pages/dashboard.html"
 echo.
-echo  TallySync Manager is running!
-echo  Dashboard: http://localhost:3000
+echo  TallySync Manager is running at http://localhost:8001
+echo  Close this window to stop the server.
 echo.
 pause
 '@

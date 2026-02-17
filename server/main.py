@@ -193,12 +193,19 @@ async def probe_connection(req: ProbeRequest):
     return ConnectionTestResult(success=success, message=message, open_companies=open_companies)
 
 
-# ─── Serve static frontend (optional) ────────────────────────────────────────
-# If you want FastAPI to also serve the HTML/JS frontend on the same port,
-# uncomment the lines below. The frontend folder is one level up from server/.
+# ─── Serve static frontend ───────────────────────────────────────────────────
+# Works both in development (python main.py) and as a PyInstaller .exe bundle.
+# When frozen, __file__ lives inside the temp extraction dir (_MEIPASS), but
+# sys.executable points at the actual .exe — two levels up from there is the
+# distribution root that contains pages/ and assets/.
+import sys as _sys
+if getattr(_sys, "frozen", False):
+    _FRONTEND_DIR = Path(_sys.executable).resolve().parent.parent  # .exe → server-bin → dist root
+else:
+    _FRONTEND_DIR = Path(__file__).resolve().parent.parent  # server/main.py → server → project root
 
-# FRONTEND_DIR = Path(__file__).resolve().parent.parent
-# app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
+if (_FRONTEND_DIR / "pages").is_dir():
+    app.mount("/", StaticFiles(directory=str(_FRONTEND_DIR), html=True), name="frontend")
 
 
 # ─── Entry Point ─────────────────────────────────────────────────────────────

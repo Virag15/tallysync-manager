@@ -50,17 +50,21 @@ mkdir "%PKG%\setup"
 copy "%ROOT_DIR%\setup\start.bat"                    "%PKG%\setup\" >nul 2>&1
 copy "%ROOT_DIR%\setup\install-autostart-windows.bat" "%PKG%\setup\" >nul 2>&1
 
-:: Update start.bat to call the binary instead of python main.py
-:: (The distributed start.bat already points to .venv path — customers use the binary)
-echo @echo off>                                          "%PKG%\setup\start.bat"
-echo title TallySync Manager>>                           "%PKG%\setup\start.bat"
-echo set "ROOT=%~dp0..">>                                "%PKG%\setup\start.bat"
-echo set "LOG=%ROOT%\server-bin\data\logs">>             "%PKG%\setup\start.bat"
+:: Write binary start.bat — no Python required
+echo @echo off>                                           "%PKG%\setup\start.bat"
+echo title TallySync Manager>>                            "%PKG%\setup\start.bat"
+echo set "ROOT=%%~dp0..">>                               "%PKG%\setup\start.bat"
+echo set "LOG=%%ROOT%%\server-bin\data\logs">>           "%PKG%\setup\start.bat"
 echo if not exist "%%LOG%%" mkdir "%%LOG%%">>            "%PKG%\setup\start.bat"
+echo echo  Starting TallySync Manager...>>               "%PKG%\setup\start.bat"
 echo start /b "" "%%ROOT%%\server-bin\tallysync-server.exe" ^> "%%LOG%%\tallysync.log" 2^>^&1>> "%PKG%\setup\start.bat"
-echo start /b "" python -m http.server 3000 --directory "%%ROOT%%" ^> "%%LOG%%\frontend.log" 2^>^&1>> "%PKG%\setup\start.bat"
-echo timeout /t 3 /nobreak ^>nul>>                      "%PKG%\setup\start.bat"
-echo start "" "http://localhost:3000">>                  "%PKG%\setup\start.bat"
+echo echo  Waiting for server...>>                       "%PKG%\setup\start.bat"
+echo timeout /t 4 /nobreak ^>nul>>                       "%PKG%\setup\start.bat"
+echo start "" "http://localhost:8001/pages/dashboard.html">> "%PKG%\setup\start.bat"
+echo echo.>>                                             "%PKG%\setup\start.bat"
+echo echo  TallySync Manager is running at http://localhost:8001>> "%PKG%\setup\start.bat"
+echo echo  Close this window to stop the server.>>       "%PKG%\setup\start.bat"
+echo echo.>>                                             "%PKG%\setup\start.bat"
 echo pause>>                                             "%PKG%\setup\start.bat"
 
 (
