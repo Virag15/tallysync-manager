@@ -8,12 +8,15 @@ from __future__ import annotations
 
 import logging
 import secrets
+import shutil
+import tempfile
 from contextlib import asynccontextmanager
+from datetime import datetime
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, Header, HTTPException, status
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -25,6 +28,9 @@ from sync import start_scheduler, scheduler
 from tally_client import TallyClient
 
 logger = logging.getLogger("tallysync.main")
+
+# Loopback addresses — only these get the API key from /api/info
+_LOOPBACK = {"127.0.0.1", "::1", "localhost"}
 
 
 # ─── API Key ─────────────────────────────────────────────────────────────────
@@ -89,7 +95,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — allow localhost origins + Vercel-hosted frontend
+# CORS — allow localhost origins + file:// ("null") + Vercel-hosted frontend
 _cors_origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()] \
     if settings.cors_origins != "*" else ["*"]
 
@@ -100,6 +106,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Total-Count", "Content-Disposition"],
 )
 
 
@@ -120,20 +127,53 @@ app.include_router(events.router)
 # ─── Info Endpoint ────────────────────────────────────────────────────────────
 
 @app.get("/api/info", tags=["meta"])
-def app_info():
-    """Public endpoint — returns app info including the API key for Settings display."""
-    return {
+def app_info(request: Request):
+    """Public endpoint — returns app info. API key only included for loopback connections."""
+    result = {
         "name":    APP_NAME,
         "version": APP_VERSION,
         "build":   APP_BUILD,
         "db_path": str(DB_PATH),
-        "api_key": _API_KEY,
     }
+    # Only expose the key to localhost — prevents LAN attackers from trivially
+    # discovering the key by calling a public endpoint.
+    client_host = (request.client.host if request.client else "") or ""
+    if client_host in _LOOPBACK:
+        result["api_key"] = _API_KEY
+    return result
 
 
 @app.get("/api/health", tags=["meta"])
 def health():
     return {"status": "ok", "scheduler_running": scheduler.running}
+
+
+# ─── DB Backup ───────────────────────────────────────────────────────────────
+
+@app.get("/api/backup", dependencies=[Depends(verify_api_key)], tags=["meta"])
+def download_backup(background_tasks: BackgroundTasks):
+    """Download a point-in-time copy of the SQLite database."""
+    if not DB_PATH.exists():
+        raise HTTPException(status_code=404, detail="Database not found")
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename  = f"tallysync_backup_{timestamp}.db"
+
+    # Copy to a temp file so the original stays open and writable.
+    # SQLite WAL mode allows consistent snapshot reads alongside writes.
+    tmp_dir  = Path(tempfile.mkdtemp())
+    tmp_path = tmp_dir / filename
+    shutil.copy2(DB_PATH, tmp_path)
+
+    # Schedule temp dir cleanup after the response is fully sent.
+    background_tasks.add_task(shutil.rmtree, str(tmp_dir), True)
+
+    return FileResponse(
+        path=str(tmp_path),
+        filename=filename,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 class ProbeRequest(BaseModel):

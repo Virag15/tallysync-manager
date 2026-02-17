@@ -9,7 +9,7 @@ import logging
 from datetime import datetime, date
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
@@ -50,8 +50,9 @@ def list_orders(
     from_date:   Optional[date] = Query(None),
     to_date:     Optional[date] = Query(None),
     party_name:  Optional[str] = Query(None),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=500),
+    skip:  int = Query(0, ge=0),
+    limit: int = Query(50,  ge=1, le=500),
+    response: Response = None,
     db: Session = Depends(get_db),
 ):
     q = (
@@ -69,6 +70,11 @@ def list_orders(
         q = q.filter(Order.order_date <= to_date)
     if party_name:
         q = q.filter(Order.party_name.ilike(f"%{party_name}%"))
+
+    # Expose total count so the frontend can render pagination without a second request
+    total = q.count()
+    if response is not None:
+        response.headers["X-Total-Count"] = str(total)
 
     return q.order_by(Order.created_at.desc()).offset(skip).limit(limit).all()
 

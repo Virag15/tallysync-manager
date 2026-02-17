@@ -54,6 +54,25 @@ const api = {
   delete: (path)         => apiFetch(path, { method: 'DELETE' }),
 };
 
+// Like apiFetch but also returns the X-Total-Count header value as `total`.
+// Used by paginated endpoints so callers get { data: [...], total: N }.
+async function apiFetchWithCount(path, options = {}) {
+  const url = `${API_BASE}${path}`;
+  const apiKey = localStorage.getItem('tallysync_api_key') || '';
+  const response = await fetch(url, {
+    headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey, ...(options.headers || {}) },
+    ...options,
+  });
+  if (!response.ok) {
+    let errorMsg = `HTTP ${response.status}`;
+    try { const body = await response.json(); errorMsg = body.detail || body.message || errorMsg; } catch (_) {}
+    throw new Error(errorMsg);
+  }
+  const data   = response.status === 204 ? null : await response.json();
+  const total  = parseInt(response.headers.get('X-Total-Count') || '0', 10);
+  return { data, total };
+}
+
 // ── Helper: build query string ────────────────────────────────────────────────
 
 function buildQuery(params = {}) {
@@ -106,7 +125,7 @@ const Ledgers = {
 // ── Orders ────────────────────────────────────────────────────────────────────
 
 const Orders = {
-  list:   (params) => api.get(`/api/orders${buildQuery(params)}`),
+  list:   (params) => apiFetchWithCount(`/api/orders${buildQuery(params)}`),
   get:    (id)     => api.get(`/api/orders/${id}`),
   create: (data)   => api.post('/api/orders', data),
   update: (id, data) => api.put(`/api/orders/${id}`, data),

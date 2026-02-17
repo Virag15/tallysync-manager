@@ -4,12 +4,20 @@
  */
 
 let _ordersData = [];
+let _ordersTotal = 0;
+let _ordersPage  = 0;
+const _PAGE_SIZE = 50;
+
 // Cache item details fetched via search (tally_name → {uom, rate})
 const _stockCache = new Map();
+
+// Delete confirmation state
+let _deleteOrderId = null;
 
 async function initOrders() {
   const companyId = CompanyStore.get();
   if (!companyId) return;
+  _ordersPage = 0;
   await loadOrders();
   await populateDataLists(companyId);
   setupOrderEvents();
@@ -29,15 +37,20 @@ async function loadOrders() {
   document.getElementById('orders-table-body').innerHTML = renderLoadingRow();
 
   try {
-    _ordersData = await Orders.list({
+    const { data, total } = await Orders.list({
       company_id:  companyId,
       order_type:  document.getElementById('order-type-filter')?.value || undefined,
       status:      document.getElementById('order-status-filter')?.value || undefined,
       from_date:   from,
       to_date:     to,
       party_name:  document.getElementById('order-search')?.value || undefined,
+      skip:        _ordersPage * _PAGE_SIZE,
+      limit:       _PAGE_SIZE,
     });
-    renderOrdersTable(_ordersData);
+    _ordersData  = data;
+    _ordersTotal = total;
+    renderOrdersTable(data);
+    renderPagination();
   } catch (err) {
     document.getElementById('orders-table-body').innerHTML = renderEmptyState('Failed: ' + err.message);
   }
@@ -66,6 +79,29 @@ function renderOrdersTable(orders) {
       </div>
     </td>
   </tr>`).join('');
+}
+
+function renderPagination() {
+  const el = document.getElementById('orders-pagination');
+  if (!el) return;
+  const totalPages = Math.ceil(_ordersTotal / _PAGE_SIZE);
+  if (totalPages <= 1) { el.innerHTML = ''; return; }
+  const from = _ordersPage * _PAGE_SIZE + 1;
+  const to   = Math.min((_ordersPage + 1) * _PAGE_SIZE, _ordersTotal);
+  el.innerHTML = `
+    <button class="btn btn-outline btn-sm" onclick="_ordersChangePage(-1)" ${_ordersPage === 0 ? 'disabled' : ''}>← Prev</button>
+    <span class="text-muted text-sm">${from}–${to} of ${_ordersTotal}</span>
+    <button class="btn btn-outline btn-sm" onclick="_ordersChangePage(1)" ${_ordersPage >= totalPages - 1 ? 'disabled' : ''}>Next →</button>`;
+}
+
+function _ordersChangePage(delta) {
+  _ordersPage += delta;
+  loadOrders();
+}
+
+function _resetAndLoad() {
+  _ordersPage = 0;
+  loadOrders();
 }
 
 async function populateDataLists(companyId) {
@@ -97,7 +133,6 @@ function attachStockSearch(input) {
       const results = await Inventory.search(companyId, q, 40);
       const sd = document.getElementById('stock-datalist');
       if (!sd) return;
-      // Update datalist and fill cache
       sd.innerHTML = results.map(item => {
         _stockCache.set(item.n, { uom: item.u, rate: item.r });
         return `<option value="${esc(item.n)}">`;
@@ -109,12 +144,13 @@ function attachStockSearch(input) {
 }
 
 function setupOrderEvents() {
+  // Filters — reset to page 0 on every filter change
   ['order-type-filter','order-status-filter','order-from','order-to'].forEach(id => {
     const el = document.getElementById(id);
-    if (el && !el._bound) { el._bound = true; el.addEventListener('change', loadOrders); }
+    if (el && !el._bound) { el._bound = true; el.addEventListener('change', _resetAndLoad); }
   });
   const s = document.getElementById('order-search');
-  if (s && !s._bound) { s._bound = true; s.addEventListener('input', debounce(loadOrders, 400)); }
+  if (s && !s._bound) { s._bound = true; s.addEventListener('input', debounce(_resetAndLoad, 400)); }
 
   document.getElementById('btn-new-order')?.addEventListener('click', openNewOrderModal);
   document.getElementById('btn-add-item')?.addEventListener('click', () => addItemRow());
@@ -122,6 +158,25 @@ function setupOrderEvents() {
   document.getElementById('btn-save-confirm')?.addEventListener('click', () => saveOrder('CONFIRMED'));
   document.getElementById('btn-export-orders')?.addEventListener('click', () =>
     exportCSV(_ordersData.map(o => ({ No: o.order_number, Type: o.order_type, Date: o.order_date, Party: o.party_name, Amount: o.total_amount, Status: o.status, TallyVoucher: o.tally_voucher_number })), 'orders.csv'));
+
+  // Delete confirm modal — bound once
+  const confirmBtn = document.getElementById('btn-confirm-delete');
+  if (confirmBtn && !confirmBtn._bound) {
+    confirmBtn._bound = true;
+    confirmBtn.addEventListener('click', async () => {
+      if (!_deleteOrderId) return;
+      try {
+        await Orders.delete(_deleteOrderId);
+        closeModal('delete-confirm-modal');
+        toast('Order deleted', 'info');
+        loadOrders();
+      } catch (err) {
+        toast('Delete failed: ' + err.message, 'error');
+      } finally {
+        _deleteOrderId = null;
+      }
+    });
+  }
 }
 
 // ── Modal ──────────────────────────────────────────────────────────────────────
@@ -167,8 +222,6 @@ function addItemRow(item = null) {
     clone.querySelector('.item-rate').value = item.rate;
     clone.querySelector('.item-amount').textContent = fmt.number(item.amount);
   }
-
-  const row = clone.querySelector('.order-item-row');
 
   const nameInput = clone.querySelector('.item-name');
   attachStockSearch(nameInput);
@@ -258,8 +311,7 @@ async function pushOrder(id, btn) {
   }
 }
 
-async function deleteOrder(id) {
-  if (!confirm('Delete this draft order?')) return;
-  try { await Orders.delete(id); toast('Deleted', 'info'); loadOrders(); }
-  catch (err) { toast('Failed: ' + err.message, 'error'); }
+function deleteOrder(id) {
+  _deleteOrderId = id;
+  openModal('delete-confirm-modal');
 }

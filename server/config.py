@@ -6,6 +6,7 @@ Build   : 20260217.001
 
 from __future__ import annotations
 import logging
+from logging.handlers import RotatingFileHandler
 import sys
 import os
 from pathlib import Path
@@ -44,10 +45,10 @@ LOG_DIR.mkdir(exist_ok=True)
 
 class Settings(BaseSettings):
     host: str           = "0.0.0.0"
-    port: int           = 8000
+    port: int           = 8001                  # aligned with frontend default
     debug: bool         = False
     log_level: str      = "INFO"
-    cors_origins: str   = "*"               # comma-separated for production
+    cors_origins: str   = "null"                # "null" = file:// + localhost regex covers the rest
     default_sync_interval_minutes: int = 5
 
     class Config:
@@ -70,7 +71,12 @@ logging.basicConfig(
     datefmt=LOG_DATEFMT,
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler(LOG_DIR / "app.log", encoding="utf-8"),
+        RotatingFileHandler(
+            LOG_DIR / "app.log",
+            maxBytes=5 * 1024 * 1024,   # 5 MB per file
+            backupCount=3,               # keep app.log + app.log.1/2/3
+            encoding="utf-8",
+        ),
     ],
 )
 

@@ -35,6 +35,29 @@ async function loadAppInfo() {
   } catch (_) { toast('Cannot reach server — check Backend URL in Settings', 'warning'); }
 }
 
+async function downloadBackup() {
+  const btn = document.getElementById('btn-backup');
+  if (btn) { btn.disabled = true; btn.textContent = 'Downloading…'; }
+  try {
+    const url    = `${window.TALLYSYNC_API || API_BASE}/api/backup`;
+    const apiKey = localStorage.getItem('tallysync_api_key') || '';
+    const res    = await fetch(url, { headers: { 'X-API-Key': apiKey } });
+    if (!res.ok) { toast('Backup failed — is the server running?', 'error'); return; }
+    const blob     = await res.blob();
+    const cd       = res.headers.get('Content-Disposition') || '';
+    const filename = cd.match(/filename="([^"]+)"/)?.[1] || 'tallysync_backup.db';
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(blob), download: filename,
+    });
+    a.click();
+    toast('Backup downloaded', 'success');
+  } catch (err) {
+    toast('Backup failed: ' + err.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Download Backup'; }
+  }
+}
+
 function saveConnection() {
   const url = document.getElementById('backend-url').value.trim().replace(/\/$/, '');
   const key = document.getElementById('api-key').value.trim();

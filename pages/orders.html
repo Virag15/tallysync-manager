@@ -58,6 +58,26 @@
       <tbody id="orders-table-body"><tr><td colspan="8" style="padding:2.5rem;text-align:center;"><span class="spinner"></span></td></tr></tbody>
     </table>
   </div>
+  <div id="orders-pagination" style="display:flex;align-items:center;justify-content:center;gap:0.75rem;padding:0.75rem 0;"></div>
+</div>
+
+<!-- Delete Confirm Modal -->
+<div class="modal-overlay" id="delete-confirm-modal">
+  <div class="modal" style="max-width:22rem;">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">Delete Order?</div>
+        <div class="modal-desc">This action cannot be undone.</div>
+      </div>
+      <button class="btn-icon" onclick="closeModal('delete-confirm-modal')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('delete-confirm-modal')">Cancel</button>
+      <button class="btn btn-primary" style="background:var(--destructive);border-color:var(--destructive);" id="btn-confirm-delete">Delete</button>
+    </div>
+  </div>
 </div>
 
 <!-- New / Edit Order Modal -->

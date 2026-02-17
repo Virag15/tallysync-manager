@@ -15,7 +15,7 @@ echo.
 schtasks /Create ^
   /SC ONLOGON ^
   /TN "TallySync Manager" ^
-  /TR "cmd /c start \"TallySync\" /min \"%START_BAT%\"" ^
+  /TR "cmd /c start \"TallySync Manager\" \"%START_BAT%\"" ^
   /RL HIGHEST ^
   /F
 
