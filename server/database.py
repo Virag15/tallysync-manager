@@ -54,27 +54,49 @@ def init_db() -> None:
 
 
 def _run_index_migrations() -> None:
-    """Idempotent: create composite indexes on existing databases that predate __table_args__."""
-    stmts = [
-        # stock_items composite indexes
-        "CREATE UNIQUE INDEX IF NOT EXISTS uq_stock_company_name      ON stock_items (company_id, tally_name)",
-        "CREATE INDEX        IF NOT EXISTS ix_stock_company_group      ON stock_items (company_id, group_name)",
-        "CREATE INDEX        IF NOT EXISTS ix_stock_company_low        ON stock_items (company_id, is_low_stock)",
-        "CREATE INDEX        IF NOT EXISTS ix_stock_company_name_srch  ON stock_items (company_id, tally_name)",
-        # ledgers composite indexes
-        "CREATE UNIQUE INDEX IF NOT EXISTS uq_ledger_company_name      ON ledgers (company_id, tally_name)",
-        "CREATE INDEX        IF NOT EXISTS ix_ledger_company_group      ON ledgers (company_id, group_name)",
-        "CREATE INDEX        IF NOT EXISTS ix_ledger_company_type       ON ledgers (company_id, ledger_type)",
-        "CREATE INDEX        IF NOT EXISTS ix_ledger_company_name_srch  ON ledgers (company_id, tally_name)",
-        # voucher_cache lookup index
-        "CREATE INDEX IF NOT EXISTS ix_voucher_company_type_num ON voucher_cache (company_id, voucher_type, voucher_number)",
-    ]
+    """Idempotent: create composite indexes on existing databases that predate __table_args__.
+
+    Deduplication runs first so the UNIQUE INDEX creation always succeeds — even if a
+    customer's old database has duplicate (company_id, tally_name) rows (highly unlikely
+    but possible if a previous sync was interrupted mid-flight).
+    """
     with engine.connect() as conn:
-        for stmt in stmts:
+        # ── Step 1: remove any duplicate rows before adding unique constraints ────
+        # Keep the row with the highest id (most recently synced) for each pair.
+        dedup_stmts = [
+            """DELETE FROM stock_items
+               WHERE id NOT IN (
+                 SELECT MAX(id) FROM stock_items GROUP BY company_id, tally_name
+               )""",
+            """DELETE FROM ledgers
+               WHERE id NOT IN (
+                 SELECT MAX(id) FROM ledgers GROUP BY company_id, tally_name
+               )""",
+        ]
+        for stmt in dedup_stmts:
             try:
                 conn.execute(sqlalchemy_text(stmt))
             except Exception:
-                pass  # index may already exist under a different name
+                pass
+
+        # ── Step 2: create indexes (idempotent) ───────────────────────────────────
+        index_stmts = [
+            # stock_items — unique constraint enables ON CONFLICT upserts in sync.py
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_stock_company_name ON stock_items (company_id, tally_name)",
+            "CREATE INDEX        IF NOT EXISTS ix_stock_company_group ON stock_items (company_id, group_name)",
+            "CREATE INDEX        IF NOT EXISTS ix_stock_company_low   ON stock_items (company_id, is_low_stock)",
+            # ledgers
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_ledger_company_name ON ledgers (company_id, tally_name)",
+            "CREATE INDEX        IF NOT EXISTS ix_ledger_company_group ON ledgers (company_id, group_name)",
+            "CREATE INDEX        IF NOT EXISTS ix_ledger_company_type  ON ledgers (company_id, ledger_type)",
+            # voucher_cache
+            "CREATE INDEX IF NOT EXISTS ix_voucher_company_type_num ON voucher_cache (company_id, voucher_type, voucher_number)",
+        ]
+        for stmt in index_stmts:
+            try:
+                conn.execute(sqlalchemy_text(stmt))
+            except Exception:
+                pass  # index already exists under this name — safe to skip
         conn.commit()
 
 

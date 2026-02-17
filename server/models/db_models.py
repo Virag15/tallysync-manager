@@ -47,9 +47,9 @@ class StockItem(Base):
         # Unique constraint enables fast ON CONFLICT upserts in batch sync
         UniqueConstraint("company_id", "tally_name", name="uq_stock_company_name"),
         # Composite indexes for common 100K-item query patterns
-        Index("ix_stock_company_group",    "company_id", "group_name"),
-        Index("ix_stock_company_low",      "company_id", "is_low_stock"),
-        Index("ix_stock_company_name_srch","company_id", "tally_name"),
+        Index("ix_stock_company_group", "company_id", "group_name"),
+        Index("ix_stock_company_low",   "company_id", "is_low_stock"),
+        # Note: no separate index on (company_id, tally_name) — the unique constraint serves as one
     )
 
     id             = Column(Integer, primary_key=True, index=True)
@@ -75,9 +75,8 @@ class Ledger(Base):
     __tablename__ = "ledgers"
     __table_args__ = (
         UniqueConstraint("company_id", "tally_name", name="uq_ledger_company_name"),
-        Index("ix_ledger_company_group",   "company_id", "group_name"),
-        Index("ix_ledger_company_type",    "company_id", "ledger_type"),
-        Index("ix_ledger_company_name_srch","company_id", "tally_name"),
+        Index("ix_ledger_company_group", "company_id", "group_name"),
+        Index("ix_ledger_company_type",  "company_id", "ledger_type"),
     )
 
     id              = Column(Integer, primary_key=True, index=True)

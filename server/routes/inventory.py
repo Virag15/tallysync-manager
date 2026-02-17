@@ -20,6 +20,33 @@ logger = logging.getLogger("tallysync.routes.inventory")
 router = APIRouter(prefix="/api/inventory", tags=["inventory"])
 
 
+# ─── Lightweight Search (for datalist / autocomplete) ────────────────────────
+# IMPORTANT: must be declared BEFORE /{item_id} — otherwise FastAPI matches
+# /search as item_id="search" (int validation fails → 422).
+
+@router.get("/search")
+def search_item_names(
+    company_id: int = Query(...),
+    q:          str = Query(..., min_length=1),
+    limit:      int = Query(30, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    """Return minimal item info for order-form autocomplete datalist.
+    Only fetches 3 columns — avoids loading full rows for 100K-item catalogs."""
+    pattern = f"%{q}%"
+    rows = (
+        db.query(StockItem.tally_name, StockItem.uom, StockItem.rate)
+        .filter(
+            StockItem.company_id == company_id,
+            StockItem.tally_name.ilike(pattern),
+        )
+        .order_by(StockItem.tally_name)
+        .limit(limit)
+        .all()
+    )
+    return [{"n": r[0], "u": r[1] or "Nos", "r": r[2] or 0} for r in rows]
+
+
 # ─── List Stock Items ─────────────────────────────────────────────────────────
 
 @router.get("", response_model=List[StockItemResponse])
@@ -45,16 +72,6 @@ def list_stock_items(
         q = q.filter(StockItem.is_low_stock == True)
 
     return q.order_by(StockItem.tally_name).offset(skip).limit(limit).all()
-
-
-# ─── Single Item ──────────────────────────────────────────────────────────────
-
-@router.get("/{item_id}", response_model=StockItemResponse)
-def get_stock_item(item_id: int, db: Session = Depends(get_db)):
-    item = db.query(StockItem).filter(StockItem.id == item_id).first()
-    if not item:
-        raise HTTPException(status_code=404, detail="Stock item not found")
-    return item
 
 
 # ─── Groups ──────────────────────────────────────────────────────────────────
@@ -103,29 +120,14 @@ def get_stock_stats(company_id: int = Query(...), db: Session = Depends(get_db))
     )
 
 
-# ─── Lightweight Search (for datalist / autocomplete) ────────────────────────
+# ─── Single Item ──────────────────────────────────────────────────────────────
 
-@router.get("/search")
-def search_item_names(
-    company_id: int = Query(...),
-    q:          str = Query(..., min_length=1),
-    limit:      int = Query(30, ge=1, le=100),
-    db: Session = Depends(get_db),
-):
-    """Return minimal item info for order-form autocomplete datalist.
-    Only fetches 3 columns — avoids loading full rows for 100K-item catalogs."""
-    pattern = f"%{q}%"
-    rows = (
-        db.query(StockItem.tally_name, StockItem.uom, StockItem.rate)
-        .filter(
-            StockItem.company_id == company_id,
-            StockItem.tally_name.ilike(pattern),
-        )
-        .order_by(StockItem.tally_name)
-        .limit(limit)
-        .all()
-    )
-    return [{"n": r[0], "u": r[1] or "Nos", "r": r[2] or 0} for r in rows]
+@router.get("/{item_id}", response_model=StockItemResponse)
+def get_stock_item(item_id: int, db: Session = Depends(get_db)):
+    item = db.query(StockItem).filter(StockItem.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Stock item not found")
+    return item
 
 
 # ─── Update Reorder Level ─────────────────────────────────────────────────────
