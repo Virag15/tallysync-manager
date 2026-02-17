@@ -56,13 +56,28 @@ const api = {
 
 // Like apiFetch but also returns the X-Total-Count header value as `total`.
 // Used by paginated endpoints so callers get { data: [...], total: N }.
-async function apiFetchWithCount(path, options = {}) {
+async function apiFetchWithCount(path, options = {}, _retry = true) {
   const url = `${API_BASE}${path}`;
   const apiKey = localStorage.getItem('tallysync_api_key') || '';
   const response = await fetch(url, {
     headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey, ...(options.headers || {}) },
     ...options,
   });
+
+  // Same 401 auto-heal as apiFetch — refresh key from /api/info and retry once
+  if (response.status === 401 && _retry) {
+    try {
+      const infoRes = await fetch(`${API_BASE}/api/info`, { signal: AbortSignal.timeout(3000) });
+      if (infoRes.ok) {
+        const info = await infoRes.json();
+        if (info.api_key) {
+          localStorage.setItem('tallysync_api_key', info.api_key);
+          return apiFetchWithCount(path, options, false);
+        }
+      }
+    } catch (_) {}
+  }
+
   if (!response.ok) {
     let errorMsg = `HTTP ${response.status}`;
     try { const body = await response.json(); errorMsg = body.detail || body.message || errorMsg; } catch (_) {}

@@ -21,7 +21,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from config import APP_NAME, APP_VERSION, APP_BUILD, DB_PATH, API_KEY_FILE, settings
-from database import init_db, SessionLocal
+from database import engine, init_db, SessionLocal
 from models.schemas import ConnectionTestResult
 from routes import companies, inventory, ledgers, orders, reports, vouchers, events
 from sync import start_scheduler, scheduler
@@ -159,8 +159,11 @@ def download_backup(background_tasks: BackgroundTasks):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename  = f"tallysync_backup_{timestamp}.db"
 
-    # Copy to a temp file so the original stays open and writable.
-    # SQLite WAL mode allows consistent snapshot reads alongside writes.
+    # Flush WAL into the main DB file so the backup is complete and consistent.
+    from sqlalchemy import text as _text
+    with engine.connect() as _conn:
+        _conn.execute(_text("PRAGMA wal_checkpoint(TRUNCATE)"))
+
     tmp_dir  = Path(tempfile.mkdtemp())
     tmp_path = tmp_dir / filename
     shutil.copy2(DB_PATH, tmp_path)

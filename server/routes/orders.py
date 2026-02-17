@@ -10,7 +10,6 @@ from datetime import datetime, date
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
@@ -28,16 +27,6 @@ router = APIRouter(prefix="/api/orders", tags=["orders"])
 # Order number prefix per type
 _PREFIX = {"SALES": "SO", "PURCHASE": "PO"}
 
-
-def _generate_order_number(db: Session, company_id: int, order_type: str) -> str:
-    prefix = _PREFIX.get(order_type, "ORD")
-    count = (
-        db.query(func.count(Order.id))
-        .filter(Order.company_id == company_id, Order.order_type == order_type)
-        .scalar()
-        or 0
-    )
-    return f"{prefix}-{date.today().strftime('%Y%m')}-{count + 1:04d}"
 
 
 # ─── List ─────────────────────────────────────────────────────────────────────
@@ -102,15 +91,12 @@ def create_order(payload: OrderCreate, db: Session = Depends(get_db)):
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
 
-    order_number = _generate_order_number(db, payload.company_id, payload.order_type)
-
     # Build items + calculate total
     items = []
     total = 0.0
     for item_data in payload.items:
         amount = round(item_data.quantity * item_data.rate, 2)
         total += amount
-        # Try to resolve stock_item_id if not provided
         stock_item_id = item_data.stock_item_id
         if not stock_item_id:
             si = db.query(StockItem).filter(
@@ -128,9 +114,11 @@ def create_order(payload: OrderCreate, db: Session = Depends(get_db)):
             amount=amount,
         ))
 
+    # Insert with a placeholder, then derive the order_number from the
+    # auto-assigned primary key — race-condition-free (SQLite ROWID is unique).
     order = Order(
         company_id=payload.company_id,
-        order_number=order_number,
+        order_number="PENDING",      # overwritten immediately after flush
         order_type=payload.order_type,
         order_date=payload.order_date,
         party_name=payload.party_name,
@@ -140,9 +128,14 @@ def create_order(payload: OrderCreate, db: Session = Depends(get_db)):
         items=items,
     )
     db.add(order)
+    db.flush()   # assigns order.id without committing
+
+    prefix = _PREFIX.get(payload.order_type, "ORD")
+    order.order_number = f"{prefix}-{date.today().strftime('%Y%m')}-{order.id:04d}"
+
     db.commit()
     db.refresh(order)
-    logger.info("Created order '%s' (id=%d)", order_number, order.id)
+    logger.info("Created order '%s' (id=%d)", order.order_number, order.id)
     return order
 
 

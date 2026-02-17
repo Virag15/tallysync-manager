@@ -46,57 +46,75 @@ def get_db() -> Generator[Session, None, None]:
 
 
 def init_db() -> None:
-    """Create all tables on startup, then run index migrations."""
+    """Create all tables on startup, then run migrations."""
     from models import db_models  # noqa: F401 — ensure models are registered
     Base.metadata.create_all(bind=engine)
-    _run_index_migrations()
+    _run_migrations()
     logger.info("Database initialised at %s", DB_PATH)
 
 
-def _run_index_migrations() -> None:
-    """Idempotent: create composite indexes on existing databases that predate __table_args__.
+# ─── Schema Version ────────────────────────────────────────────────────────────
+# Increment SCHEMA_VERSION whenever a migration block is added below.
+# SQLite's PRAGMA user_version stores this in the DB header (no extra tables).
 
-    Deduplication runs first so the UNIQUE INDEX creation always succeeds — even if a
-    customer's old database has duplicate (company_id, tally_name) rows (highly unlikely
-    but possible if a previous sync was interrupted mid-flight).
+SCHEMA_VERSION = 1
+
+
+def _run_migrations() -> None:
+    """Apply pending schema migrations and persist the new user_version.
+
+    Rules:
+    - Each migration block is guarded by  `if current_version < N`.
+    - Blocks run in ascending order; PRAGMA user_version is written last.
+    - All DDL uses IF NOT EXISTS / IF EXISTS — safe to re-run on a patched DB.
     """
     with engine.connect() as conn:
-        # ── Step 1: remove any duplicate rows before adding unique constraints ────
-        # Keep the row with the highest id (most recently synced) for each pair.
-        dedup_stmts = [
-            """DELETE FROM stock_items
-               WHERE id NOT IN (
-                 SELECT MAX(id) FROM stock_items GROUP BY company_id, tally_name
-               )""",
-            """DELETE FROM ledgers
-               WHERE id NOT IN (
-                 SELECT MAX(id) FROM ledgers GROUP BY company_id, tally_name
-               )""",
-        ]
-        for stmt in dedup_stmts:
-            try:
-                conn.execute(sqlalchemy_text(stmt))
-            except Exception:
-                pass
+        current_version = conn.execute(
+            sqlalchemy_text("PRAGMA user_version")
+        ).scalar() or 0
 
-        # ── Step 2: create indexes (idempotent) ───────────────────────────────────
-        index_stmts = [
-            # stock_items — unique constraint enables ON CONFLICT upserts in sync.py
-            "CREATE UNIQUE INDEX IF NOT EXISTS uq_stock_company_name ON stock_items (company_id, tally_name)",
-            "CREATE INDEX        IF NOT EXISTS ix_stock_company_group ON stock_items (company_id, group_name)",
-            "CREATE INDEX        IF NOT EXISTS ix_stock_company_low   ON stock_items (company_id, is_low_stock)",
-            # ledgers
-            "CREATE UNIQUE INDEX IF NOT EXISTS uq_ledger_company_name ON ledgers (company_id, tally_name)",
-            "CREATE INDEX        IF NOT EXISTS ix_ledger_company_group ON ledgers (company_id, group_name)",
-            "CREATE INDEX        IF NOT EXISTS ix_ledger_company_type  ON ledgers (company_id, ledger_type)",
-            # voucher_cache
-            "CREATE INDEX IF NOT EXISTS ix_voucher_company_type_num ON voucher_cache (company_id, voucher_type, voucher_number)",
-        ]
-        for stmt in index_stmts:
-            try:
-                conn.execute(sqlalchemy_text(stmt))
-            except Exception:
-                pass  # index already exists under this name — safe to skip
+        if current_version >= SCHEMA_VERSION:
+            return  # already up-to-date
+
+        logger.info(
+            "Migrating database from schema v%d → v%d",
+            current_version, SCHEMA_VERSION,
+        )
+
+        # ── v0 → v1 : composite indexes + unique constraints ──────────────────
+        if current_version < 1:
+            # Dedup before unique indexes in case a legacy DB has duplicate rows
+            for stmt in [
+                """DELETE FROM stock_items WHERE id NOT IN (
+                     SELECT MAX(id) FROM stock_items GROUP BY company_id, tally_name)""",
+                """DELETE FROM ledgers WHERE id NOT IN (
+                     SELECT MAX(id) FROM ledgers GROUP BY company_id, tally_name)""",
+            ]:
+                try:
+                    conn.execute(sqlalchemy_text(stmt))
+                except Exception:
+                    pass
+
+            for stmt in [
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_stock_company_name ON stock_items (company_id, tally_name)",
+                "CREATE INDEX        IF NOT EXISTS ix_stock_company_group ON stock_items (company_id, group_name)",
+                "CREATE INDEX        IF NOT EXISTS ix_stock_company_low   ON stock_items (company_id, is_low_stock)",
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_ledger_company_name ON ledgers (company_id, tally_name)",
+                "CREATE INDEX        IF NOT EXISTS ix_ledger_company_group ON ledgers (company_id, group_name)",
+                "CREATE INDEX        IF NOT EXISTS ix_ledger_company_type  ON ledgers (company_id, ledger_type)",
+                "CREATE INDEX        IF NOT EXISTS ix_voucher_company_type_num ON voucher_cache (company_id, voucher_type, voucher_number)",
+            ]:
+                try:
+                    conn.execute(sqlalchemy_text(stmt))
+                except Exception:
+                    pass  # index already exists — safe to skip
+
+        # ── v1 → v2 : add your next migration here ────────────────────────────
+        # if current_version < 2:
+        #     conn.execute(sqlalchemy_text(
+        #         "ALTER TABLE orders ADD COLUMN external_ref TEXT"
+        #     ))
+
+        conn.execute(sqlalchemy_text(f"PRAGMA user_version = {SCHEMA_VERSION}"))
         conn.commit()
-
-
+        logger.info("Schema migration complete — now at v%d", SCHEMA_VERSION)
