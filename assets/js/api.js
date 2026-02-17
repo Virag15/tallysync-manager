@@ -93,6 +93,7 @@ const Inventory = {
   groups: (companyId) => api.get(`/api/inventory/meta/groups?company_id=${companyId}`),
   stats:  (companyId) => api.get(`/api/inventory/meta/stats?company_id=${companyId}`),
   setReorderLevel: (id, level) => api.patch(`/api/inventory/${id}/reorder-level?reorder_level=${level}`),
+  search: (companyId, q, limit = 30) => api.get(`/api/inventory/search?company_id=${encodeURIComponent(companyId)}&q=${encodeURIComponent(q)}&limit=${limit}`),
 };
 
 // ── Ledgers ───────────────────────────────────────────────────────────────────

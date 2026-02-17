@@ -9,7 +9,7 @@ from typing import Optional
 
 from sqlalchemy import (
     Boolean, Column, Date, DateTime, Float,
-    ForeignKey, Integer, String, Text, func,
+    ForeignKey, Index, Integer, String, Text, UniqueConstraint, func,
 )
 from sqlalchemy.orm import relationship
 
@@ -43,6 +43,14 @@ class Company(Base):
 
 class StockItem(Base):
     __tablename__ = "stock_items"
+    __table_args__ = (
+        # Unique constraint enables fast ON CONFLICT upserts in batch sync
+        UniqueConstraint("company_id", "tally_name", name="uq_stock_company_name"),
+        # Composite indexes for common 100K-item query patterns
+        Index("ix_stock_company_group",    "company_id", "group_name"),
+        Index("ix_stock_company_low",      "company_id", "is_low_stock"),
+        Index("ix_stock_company_name_srch","company_id", "tally_name"),
+    )
 
     id             = Column(Integer, primary_key=True, index=True)
     company_id     = Column(Integer, ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -65,6 +73,12 @@ class StockItem(Base):
 
 class Ledger(Base):
     __tablename__ = "ledgers"
+    __table_args__ = (
+        UniqueConstraint("company_id", "tally_name", name="uq_ledger_company_name"),
+        Index("ix_ledger_company_group",   "company_id", "group_name"),
+        Index("ix_ledger_company_type",    "company_id", "ledger_type"),
+        Index("ix_ledger_company_name_srch","company_id", "tally_name"),
+    )
 
     id              = Column(Integer, primary_key=True, index=True)
     company_id      = Column(Integer, ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)

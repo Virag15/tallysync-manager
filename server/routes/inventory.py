@@ -103,6 +103,31 @@ def get_stock_stats(company_id: int = Query(...), db: Session = Depends(get_db))
     )
 
 
+# ─── Lightweight Search (for datalist / autocomplete) ────────────────────────
+
+@router.get("/search")
+def search_item_names(
+    company_id: int = Query(...),
+    q:          str = Query(..., min_length=1),
+    limit:      int = Query(30, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    """Return minimal item info for order-form autocomplete datalist.
+    Only fetches 3 columns — avoids loading full rows for 100K-item catalogs."""
+    pattern = f"%{q}%"
+    rows = (
+        db.query(StockItem.tally_name, StockItem.uom, StockItem.rate)
+        .filter(
+            StockItem.company_id == company_id,
+            StockItem.tally_name.ilike(pattern),
+        )
+        .order_by(StockItem.tally_name)
+        .limit(limit)
+        .all()
+    )
+    return [{"n": r[0], "u": r[1] or "Nos", "r": r[2] or 0} for r in rows]
+
+
 # ─── Update Reorder Level ─────────────────────────────────────────────────────
 
 @router.patch("/{item_id}/reorder-level")

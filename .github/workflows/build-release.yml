@@ -1,0 +1,231 @@
+name: Build Release Binaries
+
+# Triggers: when a GitHub Release is published, or manually via workflow_dispatch
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      upload_to_release:
+        description: 'Upload artifacts to latest release?'
+        required: false
+        default: 'false'
+
+jobs:
+  # ── Windows Build ────────────────────────────────────────────────────────────
+  build-windows:
+    name: Windows .exe (PyInstaller)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies + PyInstaller
+        working-directory: server
+        shell: pwsh
+        run: |
+          python -m venv .venv
+          .\.venv\Scripts\Activate.ps1
+          pip install -r requirements.txt --quiet
+          pip install pyinstaller --quiet
+
+      - name: Get version from config
+        id: version
+        shell: pwsh
+        run: |
+          $ver = & python -c "import sys; sys.path.insert(0,'server'); from config import APP_VERSION; print(APP_VERSION)" 2>$null
+          if (-not $ver) { $ver = "1.0.0" }
+          echo "version=$ver" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Build PyInstaller binary
+        working-directory: server
+        shell: pwsh
+        run: |
+          .\.venv\Scripts\Activate.ps1
+          pyinstaller `
+            --onefile `
+            --name tallysync-server `
+            --distpath ..\dist\bin `
+            --workpath $env:TEMP\tallysync-build `
+            --noconfirm `
+            main.py
+
+      - name: Assemble distribution package
+        shell: pwsh
+        run: |
+          $VERSION = "${{ steps.version.outputs.version }}"
+          $PKG = "dist\TallySync-v$VERSION-Windows"
+
+          if (Test-Path $PKG) { Remove-Item -Recurse -Force $PKG }
+          New-Item -ItemType Directory -Path "$PKG\server-bin\data" -Force | Out-Null
+          New-Item -ItemType Directory -Path "$PKG\setup"            -Force | Out-Null
+
+          Copy-Item "dist\bin\tallysync-server.exe" "$PKG\server-bin\"
+          Copy-Item -Recurse "pages"                "$PKG\pages"
+          Copy-Item -Recurse "assets"               "$PKG\assets"
+
+          # Copy setup scripts
+          if (Test-Path "setup\install-autostart-windows.bat") {
+            Copy-Item "setup\install-autostart-windows.bat" "$PKG\setup\"
+          }
+
+          # Write start.bat (uses the binary, not python)
+          $startBat = @'
+@echo off
+title TallySync Manager
+set "ROOT=%~dp0.."
+set "LOG=%ROOT%\server-bin\data\logs"
+if not exist "%LOG%" mkdir "%LOG%"
+start /b "" "%ROOT%\server-bin\tallysync-server.exe" > "%LOG%\tallysync.log" 2>&1
+start /b "" python -m http.server 3000 --directory "%ROOT%" > "%LOG%\frontend.log" 2>&1
+timeout /t 3 /nobreak >nul
+start "" "http://localhost:3000"
+echo.
+echo  TallySync Manager is running!
+echo  Dashboard: http://localhost:3000
+echo.
+pause
+'@
+          $startBat | Set-Content "$PKG\setup\start.bat" -Encoding utf8
+
+          # Write README
+          $readme = @"
+TallySync Manager - Windows Quick Start
+=========================================
+
+1. Double-click: setup\start.bat
+   This starts the server and opens your browser automatically.
+
+2. To auto-start at Windows login:
+   Run: setup\install-autostart-windows.bat
+
+Requirements: Windows 10+ (no Python required)
+Version: $VERSION
+"@
+          $readme | Set-Content "$PKG\README.txt" -Encoding utf8
+
+          # Zip the package
+          Compress-Archive -Path $PKG -DestinationPath "dist\TallySync-v$VERSION-Windows.zip" -Force
+          Write-Host "Created: dist\TallySync-v$VERSION-Windows.zip"
+
+      - name: Upload artifact (always)
+        uses: actions/upload-artifact@v4
+        with:
+          name: TallySync-Windows
+          path: dist/TallySync-v*-Windows.zip
+          retention-days: 30
+
+      - name: Upload to GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/TallySync-v*-Windows.zip
+
+  # ── macOS Build ──────────────────────────────────────────────────────────────
+  build-macos:
+    name: macOS binary (PyInstaller)
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies + PyInstaller
+        working-directory: server
+        run: |
+          python3 -m venv .venv
+          source .venv/bin/activate
+          pip install -r requirements.txt --quiet
+          pip install pyinstaller --quiet
+
+      - name: Get version from config
+        id: version
+        run: |
+          VER=$(python3 -c "import sys; sys.path.insert(0,'server'); from config import APP_VERSION; print(APP_VERSION)" 2>/dev/null || echo "1.0.0")
+          echo "version=$VER" >> $GITHUB_OUTPUT
+
+      - name: Build PyInstaller binary
+        working-directory: server
+        run: |
+          source .venv/bin/activate
+          pyinstaller \
+            --onefile \
+            --name tallysync-server \
+            --distpath ../dist/bin \
+            --workpath /tmp/tallysync-build \
+            --noconfirm \
+            main.py
+
+      - name: Assemble distribution package
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          PKG="dist/TallySync-v${VERSION}-macOS"
+
+          rm -rf "$PKG"
+          mkdir -p "$PKG/server-bin/data"
+          mkdir -p "$PKG/setup"
+
+          cp "dist/bin/tallysync-server" "$PKG/server-bin/"
+          chmod +x "$PKG/server-bin/tallysync-server"
+          cp -r pages  "$PKG/"
+          cp -r assets "$PKG/"
+
+          # Copy setup scripts if they exist
+          [ -f "setup/start.sh" ]                       && cp "setup/start.sh" "$PKG/setup/"
+          [ -f "setup/install-autostart-macos.sh" ]     && cp "setup/install-autostart-macos.sh" "$PKG/setup/"
+          [ -f "setup/com.tallysync.manager.plist" ]    && cp "setup/com.tallysync.manager.plist" "$PKG/setup/"
+
+          # Copy macOS app bundle if present
+          [ -d "TallySync.app" ] && cp -r "TallySync.app" "$PKG/"
+
+          # Update start.sh to use binary instead of python
+          if [ -f "$PKG/setup/start.sh" ]; then
+            sed -i '' 's|.venv/bin/python main.py|./tallysync-server|g' "$PKG/setup/start.sh" || true
+          fi
+
+          cat > "$PKG/README.txt" <<EOF
+TallySync Manager — macOS Quick Start
+======================================
+
+Option A — Double-click launcher (easiest):
+  Open TallySync.app
+
+Option B — Terminal:
+  1. cd into this folder
+  2. chmod +x setup/start.sh
+  3. ./setup/start.sh
+
+Option C — Auto-start at login:
+  ./setup/install-autostart-macos.sh
+
+Requirements: macOS 12+ (Monterey or later)
+Version: $VERSION
+EOF
+
+          cd dist
+          zip -r "TallySync-v${VERSION}-macOS.zip" "TallySync-v${VERSION}-macOS" -x "*.DS_Store"
+          echo "Created: dist/TallySync-v${VERSION}-macOS.zip"
+
+      - name: Upload artifact (always)
+        uses: actions/upload-artifact@v4
+        with:
+          name: TallySync-macOS
+          path: dist/TallySync-v*-macOS.zip
+          retention-days: 30
+
+      - name: Upload to GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/TallySync-v*-macOS.zip

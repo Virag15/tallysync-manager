@@ -4,6 +4,8 @@
  */
 
 let _ordersData = [];
+// Cache item details fetched via search (tally_name → {uom, rate})
+const _stockCache = new Map();
 
 async function initOrders() {
   const companyId = CompanyStore.get();
@@ -67,16 +69,43 @@ function renderOrdersTable(orders) {
 }
 
 async function populateDataLists(companyId) {
+  // Party datalist — ledger count is manageable, load upfront
   try {
-    const [ledgers, stock] = await Promise.all([
-      Ledgers.list({ company_id: companyId, limit: 500 }),
-      Inventory.list({ company_id: companyId, limit: 1000 }),
-    ]);
+    const ledgers = await Ledgers.list({ company_id: companyId, limit: 500 });
     const pd = document.getElementById('party-datalist');
     if (pd) pd.innerHTML = ledgers.map(l => `<option value="${esc(l.tally_name)}">`).join('');
-    const sd = document.getElementById('stock-datalist');
-    if (sd) sd.innerHTML = stock.map(s => `<option value="${esc(s.tally_name)}" data-uom="${esc(s.uom||'Nos')}" data-rate="${esc(String(s.rate))}">`).join('');
   } catch (_) {}
+  // Stock datalist is intentionally left empty here — populated on-demand as user types
+  // (see attachStockSearch() — avoids downloading 100K items on page load)
+}
+
+/**
+ * Attach on-demand search to an item-name input.
+ * Fetches matching stock names from the server as the user types,
+ * then populates the shared #stock-datalist and caches uom/rate.
+ */
+function attachStockSearch(input) {
+  if (input._stockBound) return;
+  input._stockBound = true;
+
+  const debouncedSearch = debounce(async function () {
+    const q = input.value.trim();
+    const companyId = CompanyStore.get();
+    if (!q || q.length < 2 || !companyId) return;
+
+    try {
+      const results = await Inventory.search(companyId, q, 40);
+      const sd = document.getElementById('stock-datalist');
+      if (!sd) return;
+      // Update datalist and fill cache
+      sd.innerHTML = results.map(item => {
+        _stockCache.set(item.n, { uom: item.u, rate: item.r });
+        return `<option value="${esc(item.n)}">`;
+      }).join('');
+    } catch (_) {}
+  }, 250);
+
+  input.addEventListener('input', debouncedSearch);
 }
 
 function setupOrderEvents() {
@@ -141,12 +170,14 @@ function addItemRow(item = null) {
 
   const row = clone.querySelector('.order-item-row');
 
-  clone.querySelector('.item-name').addEventListener('change', function () {
-    const opt = document.querySelector(`#stock-datalist option[value="${this.value}"]`);
-    if (opt) {
+  const nameInput = clone.querySelector('.item-name');
+  attachStockSearch(nameInput);
+  nameInput.addEventListener('change', function () {
+    const cached = _stockCache.get(this.value);
+    if (cached) {
       const r = this.closest('tr');
-      r.querySelector('.item-uom').value  = opt.dataset.uom || 'Nos';
-      r.querySelector('.item-rate').value = opt.dataset.rate || '';
+      r.querySelector('.item-uom').value  = cached.uom  || 'Nos';
+      r.querySelector('.item-rate').value = cached.rate || '';
       recalcRow(r);
     }
   });
