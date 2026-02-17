@@ -122,7 +122,8 @@ async def _sync_stock(db: Session, company: Company, client: TallyClient) -> int
         obj.closing_qty   = item_data.get("closing_qty", 0.0)
         obj.closing_value = item_data.get("closing_value", 0.0)
         obj.rate          = item_data.get("rate", 0.0)
-        obj.is_low_stock  = obj.closing_qty <= obj.reorder_level and obj.reorder_level > 0
+        reorder = obj.reorder_level or 0
+        obj.is_low_stock  = reorder > 0 and obj.closing_qty <= reorder
         obj.last_synced_at = now
         count += 1
 
