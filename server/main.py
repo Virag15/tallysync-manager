@@ -212,10 +212,22 @@ if (_FRONTEND_DIR / "pages").is_dir():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(
-        "main:app",
-        host=settings.host,
-        port=settings.port,
-        reload=settings.debug,
-        log_level=settings.log_level.lower(),
-    )
+    try:
+        uvicorn.run(
+            "main:app",
+            host=settings.host,
+            port=settings.port,
+            reload=settings.debug,
+            log_level=settings.log_level.lower(),
+        )
+    except OSError as exc:
+        if "address already in use" in str(exc).lower() or exc.errno in (98, 10048):
+            print(
+                f"\n  ERROR: Port {settings.port} is already in use by another application.\n"
+                f"  Close the other program, or change the port by creating a file called\n"
+                f"  'server/.env' (or next to the .exe) and adding:  PORT=8002\n"
+                f"  Then restart TallySync Manager.\n",
+                flush=True,
+            )
+        else:
+            raise

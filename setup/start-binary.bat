@@ -19,7 +19,20 @@ curl -sf http://localhost:8001/api/health >nul 2>&1
 if %errorlevel% == 0 goto READY
 set /a TRIES+=1
 if %TRIES% lss 15 goto WAIT_LOOP
-echo  Server is taking longer than usual — opening browser anyway...
+
+:: Server did not respond — likely a port conflict or crash
+echo.
+echo  ERROR: Server did not start within 30 seconds.
+echo  Port 8001 may already be in use by another program.
+echo.
+echo  Fix: create a file called ".env" in the server-bin\ folder and add:
+echo       PORT=8002
+echo  Then restart TallySync and open http://localhost:8002/pages/dashboard.html
+echo.
+echo  Log file: %LOG%\tallysync.log
+echo.
+pause
+exit /b 1
 
 :READY
 start "" "http://localhost:8001/pages/dashboard.html"

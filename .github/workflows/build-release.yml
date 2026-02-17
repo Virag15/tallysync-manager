@@ -49,7 +49,7 @@ jobs:
         run: |
           .\.venv\Scripts\Activate.ps1
           pyinstaller `
-            --onefile `
+            --onedir `
             --name tallysync-server `
             --distpath ..\dist\bin `
             --workpath $env:TEMP\tallysync-build `
@@ -81,7 +81,7 @@ jobs:
           New-Item -ItemType Directory -Path "$PKG\server-bin\data" -Force | Out-Null
           New-Item -ItemType Directory -Path "$PKG\setup"            -Force | Out-Null
 
-          Copy-Item "dist\bin\tallysync-server.exe"          "$PKG\server-bin\"
+          Copy-Item -Recurse "dist\bin\tallysync-server\*"    "$PKG\server-bin\"
           Copy-Item -Recurse "pages"                          "$PKG\pages"
           Copy-Item -Recurse "assets"                         "$PKG\assets"
 
@@ -157,7 +157,7 @@ jobs:
         run: |
           source .venv/bin/activate
           pyinstaller \
-            --onefile \
+            --onedir \
             --name tallysync-server \
             --distpath ../dist/bin \
             --workpath /tmp/tallysync-build \
@@ -188,7 +188,7 @@ jobs:
           mkdir -p "$PKG/server-bin/data"
           mkdir -p "$PKG/setup"
 
-          cp "dist/bin/tallysync-server" "$PKG/server-bin/"
+          cp -r dist/bin/tallysync-server/. "$PKG/server-bin/"
           chmod +x "$PKG/server-bin/tallysync-server"
           cp -r pages  "$PKG/"
           cp -r assets "$PKG/"
