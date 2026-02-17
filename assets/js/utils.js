@@ -239,12 +239,191 @@ async function initCompanySelector() {
       _renderOptions(_companies);
     } else {
       _setLabel('No companies');
+      _showOnboarding();
     }
   } catch (_) {
     _setLabel('Server offline');
     dropdown.innerHTML = '<div class="cs-empty">Cannot reach server</div>';
     toast('Cannot reach TallySync server', 'error');
   }
+}
+
+// ── First-Run Onboarding Wizard ─────────────────────────────────────────────────
+
+function _showOnboarding() {
+  if (document.getElementById('ob-overlay')) return;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'ob-overlay';
+  overlay.innerHTML = `
+    <div class="ob-card">
+      <div class="ob-brand">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+        TallySync Manager
+      </div>
+
+      <!-- Step 1: Welcome -->
+      <div id="ob-step1">
+        <p class="ob-title">Welcome! Let's get started.</p>
+        <p class="ob-desc">Connect TallySync to your Tally Prime to sync companies, orders, and inventory automatically.</p>
+        <div class="ob-actions">
+          <button class="btn btn-primary" onclick="_obConnect()">Connect to Tally Prime</button>
+          <button class="btn btn-outline" onclick="_obDemo()">Try with demo data</button>
+        </div>
+        <p class="ob-hint">Already have Tally running? Click "Connect" above.</p>
+      </div>
+
+      <!-- Step 2: Connection form -->
+      <div id="ob-step2" class="ob-hidden">
+        <p class="ob-step-num">Step 2 of 2</p>
+        <p class="ob-title">Connect to Tally Prime</p>
+        <p class="ob-desc">Enter your Tally company details. You can change these later in Settings.</p>
+        <div class="ob-form">
+          <div class="ob-field">
+            <label for="ob-name">Company name (as it appears in Tally)</label>
+            <input id="ob-name" class="form-control" type="text" placeholder="e.g. Acme Industries" autocomplete="off">
+          </div>
+          <div class="ob-row">
+            <div class="ob-field" style="flex:1">
+              <label for="ob-host">Tally server address</label>
+              <input id="ob-host" class="form-control" type="text" value="localhost" placeholder="localhost">
+            </div>
+            <div class="ob-field" style="width:90px">
+              <label for="ob-port">Port</label>
+              <input id="ob-port" class="form-control" type="number" value="9000" min="1" max="65535">
+            </div>
+          </div>
+        </div>
+        <div class="ob-actions">
+          <button class="btn btn-primary" id="ob-connect-btn" onclick="_obTryConnect()">Connect &amp; Sync</button>
+          <button class="btn btn-ghost" onclick="_obGo(1)">← Back</button>
+        </div>
+        <p class="ob-hint">Tally must be open and HTTP server enabled on port 9000.<br>
+          <span class="ob-hint-inline">F12 → Advanced Configuration → Enable HTTP Server</span>
+        </p>
+      </div>
+
+      <!-- Step 3: Result -->
+      <div id="ob-step3" class="ob-hidden">
+        <div id="ob-result"></div>
+      </div>
+    </div>`;
+
+  document.body.appendChild(overlay);
+}
+
+function _obGo(step) {
+  [1, 2, 3].forEach(n => {
+    const el = document.getElementById('ob-step' + n);
+    if (el) el.classList.toggle('ob-hidden', n !== step);
+  });
+}
+
+async function _obDemo() {
+  _obGo(3);
+  document.getElementById('ob-result').innerHTML = `
+    <p class="ob-title">Setting up demo…</p>
+    <p class="ob-desc">Creating a demo company with sample data.</p>
+    <div style="text-align:center;padding:1rem 0">
+      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
+           stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+           style="animation:spin 1s linear infinite">
+        <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+      </svg>
+    </div>`;
+
+  try {
+    const res = await apiFetch('/api/companies', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Demo Company', tally_host: 'localhost', tally_port: 9000 }),
+    });
+    if (!res.ok) throw new Error('create failed');
+    const company = await res.json();
+    await apiFetch(`/api/companies/${company.id}/sync`, { method: 'POST' });
+    _obSuccess('Demo company created! Explore the dashboard to see how TallySync works.', true);
+  } catch (_) {
+    _obSuccess('Demo mode ready. You can add a real Tally connection later in Settings.', true);
+  }
+}
+
+async function _obTryConnect() {
+  const name = document.getElementById('ob-name').value.trim();
+  const host = document.getElementById('ob-host').value.trim() || 'localhost';
+  const port = parseInt(document.getElementById('ob-port').value, 10) || 9000;
+
+  if (!name) {
+    toast('Please enter the company name', 'warning');
+    document.getElementById('ob-name').focus();
+    return;
+  }
+
+  const btn = document.getElementById('ob-connect-btn');
+  btn.disabled = true;
+  btn.textContent = 'Connecting…';
+
+  let companyId = null;
+  try {
+    const res = await apiFetch('/api/companies', {
+      method: 'POST',
+      body: JSON.stringify({ name, tally_host: host, tally_port: port }),
+    });
+    if (!res.ok) throw new Error('create failed');
+    const company = await res.json();
+    companyId = company.id;
+
+    const syncRes = await apiFetch(`/api/companies/${companyId}/sync`, { method: 'POST' });
+    if (!syncRes.ok) throw new Error('sync failed');
+
+    _obGo(3);
+    _obSuccess(`Connected to <strong>${esc(name)}</strong>! Syncing data now — your dashboard will update shortly.`, true);
+  } catch (_) {
+    btn.disabled = false;
+    btn.textContent = 'Connect & Sync';
+    if (companyId) {
+      try { await apiFetch(`/api/companies/${companyId}`, { method: 'DELETE' }); } catch (_) {}
+    }
+    _obFail(`Could not connect to Tally at <strong>${esc(host)}:${port}</strong>.<br>
+      Make sure Tally is open and HTTP server is enabled.`, true);
+  }
+}
+
+function _obSuccess(msg, showDashboard = false) {
+  _obGo(3);
+  document.getElementById('ob-result').innerHTML = `
+    <div style="text-align:center;padding:0.5rem 0 1rem">
+      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
+           stroke="oklch(0.65 0.22 142)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>
+      </svg>
+    </div>
+    <p class="ob-title" style="text-align:center">All set!</p>
+    <p class="ob-desc" style="text-align:center">${msg}</p>
+    ${showDashboard ? `<div class="ob-actions">
+      <button class="btn btn-primary" onclick="document.getElementById('ob-overlay').remove();location.reload()">
+        Go to Dashboard →
+      </button>
+    </div>` : ''}`;
+}
+
+function _obFail(msg, allowRetry = true) {
+  _obGo(3);
+  document.getElementById('ob-result').innerHTML = `
+    <div style="text-align:center;padding:0.5rem 0 1rem">
+      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
+           stroke="oklch(0.55 0.22 27)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>
+      </svg>
+    </div>
+    <p class="ob-title" style="text-align:center">Connection failed</p>
+    <p class="ob-desc" style="text-align:center">${msg}</p>
+    ${allowRetry ? `<div class="ob-actions">
+      <button class="btn btn-primary" onclick="_obGo(2)">← Try again</button>
+      <button class="btn btn-outline" onclick="_obDemo()">Use demo data instead</button>
+    </div>` : ''}`;
 }
 
 // ── Active Nav ─────────────────────────────────────────────────────────────────

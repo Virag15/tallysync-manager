@@ -1,0 +1,58 @@
+#!/bin/bash
+# TallySync Manager — macOS Launcher
+# Double-click TallySync.app to start both servers and open the dashboard.
+
+TALLY_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
+SERVER_DIR="$TALLY_DIR/server"
+VENV_PYTHON="$SERVER_DIR/.venv/bin/python"
+LOG_DIR="$SERVER_DIR/data/logs"
+BACKEND_PID_FILE="$LOG_DIR/backend.pid"
+FRONTEND_PID_FILE="$LOG_DIR/frontend.pid"
+
+# Ensure log directory exists
+mkdir -p "$LOG_DIR"
+
+# ── Helper: is_running ──────────────────────────────────────────────────────
+is_running() {
+  local pid_file="$1"
+  local port="$2"
+  if [ -f "$pid_file" ]; then
+    local pid
+    pid=$(cat "$pid_file")
+    if kill -0 "$pid" 2>/dev/null; then
+      return 0  # process alive
+    fi
+  fi
+  # Also check by port as fallback
+  lsof -i "TCP:$port" -sTCP:LISTEN -t >/dev/null 2>&1
+}
+
+# ── Start backend ───────────────────────────────────────────────────────────
+if ! is_running "$BACKEND_PID_FILE" 8001; then
+  if [ ! -x "$VENV_PYTHON" ]; then
+    osascript -e 'display alert "TallySync Manager" message "Virtual environment not found.\n\nPlease run the setup script first:\n  server/.venv  (python3 -m venv .venv)\n  .venv/bin/pip install -r requirements.txt" as critical'
+    exit 1
+  fi
+  "$VENV_PYTHON" "$SERVER_DIR/main.py" \
+    > "$LOG_DIR/tallysync.log" 2> "$LOG_DIR/tallysync-error.log" &
+  echo $! > "$BACKEND_PID_FILE"
+fi
+
+# ── Start frontend ──────────────────────────────────────────────────────────
+if ! is_running "$FRONTEND_PID_FILE" 3000; then
+  /usr/bin/python3 -m http.server 3000 \
+    --directory "$TALLY_DIR" \
+    > "$LOG_DIR/frontend.log" 2> "$LOG_DIR/frontend-error.log" &
+  echo $! > "$FRONTEND_PID_FILE"
+fi
+
+# ── Wait for backend to be ready (up to 8 seconds) ─────────────────────────
+for i in {1..8}; do
+  if curl -sf http://localhost:8001/api/health >/dev/null 2>&1; then
+    break
+  fi
+  sleep 1
+done
+
+# ── Open browser ───────────────────────────────────────────────────────────
+open "http://localhost:3000"
