@@ -106,8 +106,8 @@
             <ol class="launcher-steps">
               <li>Download and unzip the TallySync package</li>
               <li>Drag <strong>TallySync.app</strong> to your <strong>Applications</strong> folder</li>
-              <li>Double-click it — both servers start and your browser opens</li>
-              <li><em>Optional:</em> right-click → <strong>Keep in Dock</strong></li>
+              <li><strong>First time:</strong> right-click → <strong>Open</strong> → Open again</li>
+              <li>After that, just double-click to launch</li>
             </ol>
           </div>
           <button class="btn btn-outline btn-sm launcher-detail-btn" onclick="openModal('launcher-mac-modal')">How to set up →</button>
@@ -455,12 +455,14 @@
           <div class="guide-step-title">Install the app</div>
           <ol class="guide-list">
             <li>Drag <strong>TallySync.app</strong> from the download folder to <strong>/Applications</strong></li>
-            <li>Right-click the app → <strong>Open</strong> (first launch only, to allow unsigned app)</li>
+            <li><strong>First launch only:</strong> right-click the app → <strong>Open</strong> → click <strong>Open</strong> again in the dialog that appears</li>
             <li>From now on, just double-click it normally</li>
           </ol>
-          <div class="guide-tip">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            macOS may show a "can't be opened" warning the first time. Right-click → Open bypasses this.
+          <div class="guide-tip" style="background:oklch(0.97 0.02 27);border-color:oklch(0.577 0.245 27 / 25%);gap:0.625rem;align-items:flex-start;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="oklch(0.55 0.22 27)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span style="color:var(--foreground);">Getting <em>"Apple could not verify…"</em>? Open <strong>Terminal</strong> and run this once:
+            <code style="display:block;margin-top:0.4rem;padding:0.35rem 0.6rem;background:oklch(0.93 0.01 27);border-radius:4px;font-size:0.8rem;">xattr -cr /Applications/TallySync.app</code>
+            Then double-click the app — it will open normally.</span>
           </div>
         </div>
       </div>

@@ -30,6 +30,18 @@ fi
 mkdir -p "$LOG_DIR"
 mkdir -p "$HOME/Library/LaunchAgents"
 
+# ── Strip Gatekeeper quarantine & ad-hoc sign the .app ────────────────────
+APP="$SCRIPT_DIR/../TallySync.app"
+if [ -d "$APP" ]; then
+  echo "  Removing Gatekeeper quarantine from TallySync.app…"
+  xattr -cr "$APP" 2>/dev/null || true
+  if command -v codesign &>/dev/null; then
+    codesign --deep --force --sign - "$APP" 2>/dev/null && \
+      echo "  TallySync.app signed (ad-hoc)." || \
+      echo "  (codesign skipped — app will still work via right-click → Open)"
+  fi
+fi
+
 # Substitute placeholders in plist template
 sed \
   -e "s|PLACEHOLDER_VENV_PYTHON|$VENV_PYTHON|g" \
