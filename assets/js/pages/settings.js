@@ -66,9 +66,9 @@ async function loadCompanies() {
       return;
     }
     tbody.innerHTML = list.map(c => `<tr>
-      <td class="fw-600">${c.name}</td>
-      <td class="text-muted">${c.tally_company_name}</td>
-      <td class="mono text-sm">${c.host}</td>
+      <td class="fw-600">${esc(c.name)}</td>
+      <td class="text-muted">${esc(c.tally_company_name)}</td>
+      <td class="mono text-sm">${esc(c.host)}</td>
       <td class="mono text-sm">${c.port}</td>
       <td class="text-muted text-sm">${c.sync_interval_minutes} min</td>
       <td class="text-muted text-sm">${fmt.relativeTime(c.last_synced_at)}</td>

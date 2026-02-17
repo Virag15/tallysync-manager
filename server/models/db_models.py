@@ -34,7 +34,7 @@ class Company(Base):
 
     stock_items = relationship("StockItem", back_populates="company", cascade="all, delete-orphan")
     ledgers     = relationship("Ledger",    back_populates="company", cascade="all, delete-orphan")
-    orders      = relationship("Order",     back_populates="company")
+    orders      = relationship("Order",     back_populates="company", passive_deletes=True)
     vouchers    = relationship("VoucherCache", back_populates="company", cascade="all, delete-orphan")
     sync_logs   = relationship("SyncLog",   back_populates="company", cascade="all, delete-orphan")
 

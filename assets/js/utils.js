@@ -337,12 +337,10 @@ async function _obDemo() {
     </div>`;
 
   try {
-    const res = await apiFetch('/api/companies', {
+    const company = await apiFetch('/api/companies', {
       method: 'POST',
-      body: JSON.stringify({ name: 'Demo Company', tally_host: 'localhost', tally_port: 9000 }),
+      body: JSON.stringify({ name: 'Demo Company', tally_company_name: 'Demo Trading Co.', host: 'localhost', port: 9000 }),
     });
-    if (!res.ok) throw new Error('create failed');
-    const company = await res.json();
     await apiFetch(`/api/companies/${company.id}/sync`, { method: 'POST' });
     _obSuccess('Demo company created! Explore the dashboard to see how TallySync works.', true);
   } catch (_) {
@@ -367,16 +365,13 @@ async function _obTryConnect() {
 
   let companyId = null;
   try {
-    const res = await apiFetch('/api/companies', {
+    const company = await apiFetch('/api/companies', {
       method: 'POST',
-      body: JSON.stringify({ name, tally_host: host, tally_port: port }),
+      body: JSON.stringify({ name, tally_company_name: name, host, port }),
     });
-    if (!res.ok) throw new Error('create failed');
-    const company = await res.json();
     companyId = company.id;
 
-    const syncRes = await apiFetch(`/api/companies/${companyId}/sync`, { method: 'POST' });
-    if (!syncRes.ok) throw new Error('sync failed');
+    await apiFetch(`/api/companies/${companyId}/sync`, { method: 'POST' });
 
     _obGo(3);
     _obSuccess(`Connected to <strong>${esc(name)}</strong>! Syncing data now — your dashboard will update shortly.`, true);
