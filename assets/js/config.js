@@ -8,18 +8,18 @@
  */
 window.TALLYSYNC_API = localStorage.getItem('tallysync_api') || window.TALLYSYNC_API || 'http://localhost:8001';
 
-// Auto-bootstrap API key on first load (when key not yet in localStorage)
+// Sync API key from server on every load.
+// Handles: first run (no key), server reinstall (stale key), key rotation.
+// /api/info is public so this works even with a wrong/missing key.
 (async () => {
-  if (!localStorage.getItem('tallysync_api_key')) {
-    try {
-      const res = await fetch(window.TALLYSYNC_API + '/api/info', { signal: AbortSignal.timeout(3000) });
-      if (res.ok) {
-        const info = await res.json();
-        if (info.api_key) {
-          localStorage.setItem('tallysync_api_key', info.api_key);
-          location.reload();
-        }
+  try {
+    const res = await fetch(window.TALLYSYNC_API + '/api/info', { signal: AbortSignal.timeout(3000) });
+    if (res.ok) {
+      const info = await res.json();
+      if (info.api_key && info.api_key !== localStorage.getItem('tallysync_api_key')) {
+        localStorage.setItem('tallysync_api_key', info.api_key);
+        location.reload();
       }
-    } catch (_) {}
-  }
+    }
+  } catch (_) {}
 })();

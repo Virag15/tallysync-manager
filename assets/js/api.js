@@ -10,13 +10,27 @@ const API_BASE = window.TALLYSYNC_API || 'http://localhost:8001';
 
 // ── Core Fetch ────────────────────────────────────────────────────────────────
 
-async function apiFetch(path, options = {}) {
+async function apiFetch(path, options = {}, _retry = true) {
   const url = `${API_BASE}${path}`;
   const apiKey = localStorage.getItem('tallysync_api_key') || '';
   const defaults = {
     headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey, ...(options.headers || {}) },
   };
   const response = await fetch(url, { ...defaults, ...options });
+
+  // Auto-heal stale API key: refresh from /api/info and retry once
+  if (response.status === 401 && _retry) {
+    try {
+      const infoRes = await fetch(`${API_BASE}/api/info`, { signal: AbortSignal.timeout(3000) });
+      if (infoRes.ok) {
+        const info = await infoRes.json();
+        if (info.api_key) {
+          localStorage.setItem('tallysync_api_key', info.api_key);
+          return apiFetch(path, options, false); // retry once with new key
+        }
+      }
+    } catch (_) {}
+  }
 
   if (!response.ok) {
     let errorMsg = `HTTP ${response.status}`;
