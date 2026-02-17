@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models.db_models import Company, Order, OrderItem, StockItem, Ledger, VoucherCache
 from models.schemas import DashboardKPI, StockMovementItem, PartyOutstanding
+from sqlalchemy import union_all, literal, String
 
 logger = logging.getLogger("tallysync.routes.reports")
 router = APIRouter(prefix="/api/reports", tags=["reports"])
@@ -303,3 +304,140 @@ def party_sales(
         {"party": r.party_name, "order_count": r.order_count, "total_amount": round(r.total_amount, 2)}
         for r in rows
     ]
+
+
+# ─── Creditors Aging (AP Aging Report) ───────────────────────────────────────
+
+@router.get("/creditors-aging")
+def creditors_aging(
+    company_id: int = Query(...),
+    db: Session = Depends(get_db),
+):
+    """
+    Accounts Payable aging report.
+    For each supplier with an outstanding balance, breaks down purchase
+    transactions into 0-30, 31-60, 61-90, 91-180, and 180+ day buckets.
+
+    Data sources:
+      • Ledger.closing_balance  — authoritative total outstanding per creditor
+      • Orders (PURCHASE, not CANCELLED) — local orders as invoice proxies
+      • VoucherCache (Purchase Order) — vouchers synced from Tally
+
+    The bucket amounts show the *purchase profile* (how much was ordered in
+    each age band). The closing_balance from Tally is the ground truth for
+    total outstanding.
+    """
+    today = date.today()
+
+    # ── Step 1: All SUPPLIER ledgers with a balance ───────────────────────────
+    suppliers = (
+        db.query(Ledger)
+        .filter(
+            Ledger.company_id == company_id,
+            Ledger.ledger_type == "SUPPLIER",
+            Ledger.closing_balance != 0,
+        )
+        .order_by(Ledger.closing_balance.desc())
+        .all()
+    )
+    if not suppliers:
+        return []
+
+    supplier_names = {s.tally_name: s for s in suppliers}
+
+    # ── Step 2: Purchase transactions from Orders table ───────────────────────
+    local_orders = (
+        db.query(
+            Order.party_name,
+            Order.order_date,
+            Order.total_amount,
+        )
+        .filter(
+            Order.company_id == company_id,
+            Order.order_type == "PURCHASE",
+            Order.status != "CANCELLED",
+        )
+        .all()
+    )
+
+    # ── Step 3: Purchase vouchers from Tally cache ────────────────────────────
+    cached_vouchers = (
+        db.query(
+            VoucherCache.party_name,
+            VoucherCache.voucher_date,
+            VoucherCache.amount,
+        )
+        .filter(
+            VoucherCache.company_id == company_id,
+            VoucherCache.voucher_type == "Purchase Order",
+            VoucherCache.party_name.isnot(None),
+            VoucherCache.amount > 0,
+        )
+        .all()
+    )
+
+    # ── Step 4: Build per-party transaction list ──────────────────────────────
+    from collections import defaultdict
+    party_txns: dict = defaultdict(list)
+
+    for o in local_orders:
+        if o.party_name:
+            party_txns[o.party_name].append((o.order_date, o.total_amount))
+
+    for v in cached_vouchers:
+        if v.party_name:
+            party_txns[v.party_name].append((v.voucher_date, v.amount))
+
+    # ── Step 5: Compute aging per supplier ────────────────────────────────────
+    def _age_days(txn_date) -> int:
+        if txn_date is None:
+            return 999
+        if hasattr(txn_date, 'date'):
+            txn_date = txn_date.date()
+        return (today - txn_date).days
+
+    results = []
+    for supplier in suppliers:
+        name = supplier.tally_name
+        txns = party_txns.get(name, [])
+
+        b0_30 = b31_60 = b61_90 = b91_180 = b180_plus = 0.0
+        oldest_days = 0
+        last_txn_date = None
+        total_txn_amount = 0.0
+
+        for txn_date, amount in txns:
+            age = _age_days(txn_date)
+            total_txn_amount += amount
+            if age > oldest_days:
+                oldest_days = age
+            if last_txn_date is None or (txn_date is not None and txn_date > last_txn_date):
+                last_txn_date = txn_date
+
+            if age <= 30:
+                b0_30 += amount
+            elif age <= 60:
+                b31_60 += amount
+            elif age <= 90:
+                b61_90 += amount
+            elif age <= 180:
+                b91_180 += amount
+            else:
+                b180_plus += amount
+
+        results.append({
+            "party_name":          name,
+            "ledger_type":         supplier.ledger_type,
+            "total_outstanding":   round(supplier.closing_balance, 2),
+            "current_0_30":        round(b0_30, 2),
+            "days_31_60":          round(b31_60, 2),
+            "days_61_90":          round(b61_90, 2),
+            "days_91_180":         round(b91_180, 2),
+            "days_180_plus":       round(b180_plus, 2),
+            "total_invoiced":      round(total_txn_amount, 2),
+            "oldest_invoice_days": oldest_days if txns else None,
+            "last_transaction_date": str(last_txn_date) if last_txn_date else None,
+            "transaction_count":   len(txns),
+        })
+
+    return results

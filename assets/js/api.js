@@ -118,4 +118,5 @@ const Reports = {
   partyOutstanding:(companyId, type)   => api.get(`/api/reports/party-outstanding${buildQuery({ company_id: companyId, ledger_type: type })}`),
   itemMovement:    (companyId, params) => api.get(`/api/reports/item-movement${buildQuery({ company_id: companyId, ...params })}`),
   partySales:      (companyId, params) => api.get(`/api/reports/party-sales${buildQuery({ company_id: companyId, ...params })}`),
+  creditorsAging:  (companyId)         => api.get(`/api/reports/creditors-aging?company_id=${companyId}`),
 };

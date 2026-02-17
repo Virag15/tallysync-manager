@@ -952,3 +952,16 @@ kbd {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 9999px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
+
+/* ── Aging Report ────────────────────────────────────────────────────────── */
+.aging-bar { display:flex; gap:2px; height:0.5rem; border-radius:4px; overflow:hidden; min-width:6rem; }
+.aging-seg { height:100%; transition:width 300ms; }
+.aging-seg-0  { background:oklch(0.72 0.17 145); }   /* current   — green  */
+.aging-seg-30 { background:oklch(0.78 0.17 85); }    /* 31-60     — yellow */
+.aging-seg-60 { background:oklch(0.72 0.17 55); }    /* 61-90     — amber  */
+.aging-seg-90 { background:oklch(0.65 0.18 35); }    /* 91-180    — orange */
+.aging-seg-180{ background:oklch(0.55 0.20 27); }    /* 180+      — red    */
+.aging-label  { font-size:0.6875rem; color:var(--muted-foreground); white-space:nowrap; }
+.aging-overdue{ color:oklch(0.48 0.20 27); font-weight:600; }
+.aging-summary-row { background:var(--muted) !important; font-weight:600; }
+.aging-summary-row td { border-top:2px solid var(--border); }
