@@ -178,14 +178,61 @@
   <div class="modal" style="width:44rem;max-width:96vw;">
     <div class="modal-header">
       <div>
-        <div class="modal-title">Tally Connection Guide</div>
-        <div class="modal-desc">How to connect TallySync Manager to Tally Prime</div>
+        <div class="modal-title">Setup & Connection Guide</div>
+        <div class="modal-desc">API key, mock testing, and connecting to Tally Prime</div>
       </div>
       <button class="btn-icon" onclick="closeModal('guide-modal')">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
       </button>
     </div>
     <div class="modal-body" style="padding:1.25rem 1.5rem;">
+
+      <!-- Step 0: API Key -->
+      <div class="guide-step">
+        <div class="guide-step-num" style="background:var(--primary);color:#fff;">🔑</div>
+        <div class="guide-step-body">
+          <div class="guide-step-title">How the API Key Works</div>
+          <div class="guide-step-desc">TallySync protects its backend with an API key so only your browser can talk to it.</div>
+          <ul class="guide-list">
+            <li>On first launch, the server <strong>auto-generates</strong> a random key and saves it to <code>server/api.key</code></li>
+            <li>The key is shown in <strong>Settings → API Key</strong> field — copy it once and it's stored in your browser</li>
+            <li>Every API call your browser makes sends this key in an <code>X-API-Key</code> header</li>
+            <li>If you ever reset the key: delete <code>server/api.key</code> and restart the server — a new key is generated</li>
+          </ul>
+          <div class="guide-tip">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            The key is stored only on your machine — it never leaves your LAN. You don't need to remember it.
+          </div>
+        </div>
+      </div>
+
+      <div class="guide-divider"></div>
+
+      <!-- Test without Tally -->
+      <div class="guide-step">
+        <div class="guide-step-num" style="background:var(--success);color:#fff;">🧪</div>
+        <div class="guide-step-body">
+          <div class="guide-step-title">Test Without Tally (Mock Mode)</div>
+          <div class="guide-step-desc">No Tally Prime? Run the built-in mock server to test every feature with realistic demo data.</div>
+          <ol class="guide-list">
+            <li>Open a terminal and go to the <code>server/</code> folder</li>
+            <li>Run: <code>python mock_tally.py</code></li>
+            <li>In TallySync Settings → Add Company:<br>
+              <strong>Display Name:</strong> Demo Company<br>
+              <strong>Tally Company Name:</strong> Demo Trading Co.<br>
+              <strong>Host:</strong> localhost &nbsp; <strong>Port:</strong> 9000
+            </li>
+            <li>Click <strong>Test Connection</strong> — it should say "Connected"</li>
+            <li>Save the company, then go to <strong>Inventory</strong> or <strong>Orders</strong></li>
+          </ol>
+          <div class="guide-tip">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            The mock server returns 8 stock items, 7 ledgers, and sample sales + purchase vouchers. Pushing an order always succeeds with a mock voucher number.
+          </div>
+        </div>
+      </div>
+
+      <div class="guide-divider"></div>
 
       <!-- Step 1: Enable HTTP Server -->
       <div class="guide-step">
