@@ -129,31 +129,122 @@ function renderLoadingRow() {
   </td></tr>`;
 }
 
-// ── Company Selector ───────────────────────────────────────────────────────────
+// ── Company Selector (custom dropdown) ────────────────────────────────────────
 
 async function initCompanySelector() {
-  const select = document.getElementById('company-select');
-  if (!select) return;
-  try {
-    const companies = await Companies.list();
-    select.innerHTML = companies.length
-      ? companies.map(c => `<option value="${esc(String(c.id))}">${esc(c.name)}</option>`).join('')
-      : '<option value="">No companies — go to Settings</option>';
+  const trigger  = document.getElementById('cs-trigger');
+  const dropdown = document.getElementById('cs-dropdown');
+  const label    = document.getElementById('cs-label');
+  if (!trigger || !dropdown) return;
 
+  let _companies = [];
+  let _open = false;
+
+  function _setLabel(name) {
+    label.textContent = name || 'Select company';
+  }
+
+  function _openDropdown() {
+    if (_open) return;
+    _open = true;
+    trigger.setAttribute('aria-expanded', 'true');
+    dropdown.classList.add('cs-open');
+    // Position check: flip up if too close to bottom
+    const rect = trigger.getBoundingClientRect();
+    if (rect.bottom + 260 > window.innerHeight) {
+      dropdown.style.top = 'auto';
+      dropdown.style.bottom = '100%';
+      dropdown.style.marginTop = '0';
+      dropdown.style.marginBottom = '0.25rem';
+    } else {
+      dropdown.style.bottom = 'auto';
+      dropdown.style.top = '100%';
+      dropdown.style.marginBottom = '0';
+      dropdown.style.marginTop = '0.25rem';
+    }
+    dropdown.querySelector('[aria-selected="true"]')?.focus();
+  }
+
+  function _closeDropdown() {
+    if (!_open) return;
+    _open = false;
+    trigger.setAttribute('aria-expanded', 'false');
+    dropdown.classList.remove('cs-open');
+    trigger.focus();
+  }
+
+  function _renderOptions(companies) {
     const saved = CompanyStore.get();
-    if (saved && companies.find(c => c.id === saved)) {
-      select.value = String(saved);
-    } else if (companies.length) {
-      CompanyStore.set(companies[0].id);
-      select.value = String(companies[0].id);
+    dropdown.innerHTML = companies.length
+      ? companies.map(c => `
+          <div class="cs-option${c.id === saved ? ' cs-selected' : ''}"
+               role="option" tabindex="0"
+               aria-selected="${c.id === saved}"
+               data-id="${esc(String(c.id))}">
+            <svg class="cs-check" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            ${esc(c.name)}
+          </div>`).join('')
+      : `<div class="cs-empty">No companies — <a href="settings.html">add one</a></div>`;
+
+    dropdown.querySelectorAll('.cs-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        const id = parseInt(opt.dataset.id, 10);
+        CompanyStore.set(id);
+        dropdown.querySelectorAll('.cs-option').forEach(o => {
+          o.classList.toggle('cs-selected', parseInt(o.dataset.id, 10) === id);
+          o.setAttribute('aria-selected', parseInt(o.dataset.id, 10) === id);
+        });
+        const c = _companies.find(c => c.id === id);
+        if (c) _setLabel(c.name);
+        _closeDropdown();
+      });
+      opt.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); opt.click(); }
+        if (e.key === 'Escape') _closeDropdown();
+        if (e.key === 'ArrowDown') { e.preventDefault(); (opt.nextElementSibling || opt).focus(); }
+        if (e.key === 'ArrowUp')   { e.preventDefault(); (opt.previousElementSibling || opt).focus(); }
+      });
+    });
+  }
+
+  // Trigger click
+  trigger.addEventListener('click', e => {
+    e.stopPropagation();
+    _open ? _closeDropdown() : _openDropdown();
+  });
+  trigger.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+      e.preventDefault(); _openDropdown();
+    }
+    if (e.key === 'Escape') _closeDropdown();
+  });
+
+  // Close on outside click
+  document.addEventListener('click', e => {
+    const root = document.getElementById('cs-root');
+    if (root && !root.contains(e.target)) _closeDropdown();
+  });
+
+  // Load companies
+  try {
+    _companies = await Companies.list();
+    _renderOptions(_companies);
+    const saved = CompanyStore.get();
+    const active = saved && _companies.find(c => c.id === saved);
+    if (active) {
+      _setLabel(active.name);
+    } else if (_companies.length) {
+      CompanyStore.set(_companies[0].id);
+      _setLabel(_companies[0].name);
+      _renderOptions(_companies);
+    } else {
+      _setLabel('No companies');
     }
   } catch (_) {
-    select.innerHTML = '<option value="">Server offline</option>';
+    _setLabel('Server offline');
+    dropdown.innerHTML = '<div class="cs-empty">Cannot reach server</div>';
     toast('Cannot reach TallySync server', 'error');
   }
-  select.addEventListener('change', () => {
-    CompanyStore.set(select.value ? parseInt(select.value, 10) : null);
-  });
 }
 
 // ── Active Nav ─────────────────────────────────────────────────────────────────
