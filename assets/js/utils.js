@@ -3,6 +3,18 @@
  * Version: 1.0.0 | Build: 20260217.001
  */
 
+// ── HTML Escape ────────────────────────────────────────────────────────────────
+
+function esc(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // ── Company State ──────────────────────────────────────────────────────────────
 
 const CompanyStore = {
@@ -125,7 +137,7 @@ async function initCompanySelector() {
   try {
     const companies = await Companies.list();
     select.innerHTML = companies.length
-      ? companies.map(c => `<option value="${c.id}">${c.name}</option>`).join('')
+      ? companies.map(c => `<option value="${esc(String(c.id))}">${esc(c.name)}</option>`).join('')
       : '<option value="">No companies — go to Settings</option>';
 
     const saved = CompanyStore.get();

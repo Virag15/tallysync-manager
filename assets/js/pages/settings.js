@@ -13,21 +13,32 @@ async function loadAppInfo() {
   // Populate backend URL field from localStorage
   document.getElementById('backend-url').value = localStorage.getItem('tallysync_api') || window.TALLYSYNC_API || 'http://localhost:8001';
 
+  // Populate API key from localStorage (already set) or from server
+  const storedKey = localStorage.getItem('tallysync_api_key') || '';
+  if (storedKey) document.getElementById('api-key').value = storedKey;
+
   try {
     const info = await Info.get();
     document.getElementById('info-name').textContent    = info.name;
     document.getElementById('info-version').textContent = info.version;
     document.getElementById('info-build').textContent   = info.build;
     document.getElementById('info-db').textContent      = info.db_path;
-  } catch (_) { toast('Cannot reach server', 'error'); }
+    // Auto-fill API key from server if not already in localStorage
+    if (!storedKey && info.api_key) {
+      document.getElementById('api-key').value = info.api_key;
+    }
+  } catch (_) { toast('Cannot reach server — enter Backend URL and API Key manually', 'warning'); }
 }
 
-function saveBackendUrl() {
+function saveConnection() {
   const url = document.getElementById('backend-url').value.trim().replace(/\/$/, '');
-  if (!url) { toast('Enter a valid URL', 'warning'); return; }
+  const key = document.getElementById('api-key').value.trim();
+  if (!url) { toast('Enter a valid backend URL', 'warning'); return; }
+  if (!key) { toast('Enter the API key', 'warning'); return; }
   localStorage.setItem('tallysync_api', url);
+  localStorage.setItem('tallysync_api_key', key);
   window.TALLYSYNC_API = url;
-  toast('Backend URL saved — reloading…', 'success');
+  toast('Connection settings saved — reloading…', 'success');
   setTimeout(() => location.reload(), 900);
 }
 
@@ -76,7 +87,16 @@ function setupSettingsEvents() {
   document.getElementById('btn-test-entry')?.addEventListener('click', sendTestEntry);
   document.getElementById('btn-guide')?.addEventListener('click', openGuide);
   document.getElementById('btn-probe')?.addEventListener('click', probeConnection);
-  document.getElementById('btn-save-backend-url')?.addEventListener('click', saveBackendUrl);
+  document.getElementById('btn-save-connection')?.addEventListener('click', saveConnection);
+  document.getElementById('btn-toggle-key')?.addEventListener('click', () => {
+    const inp = document.getElementById('api-key');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+  });
+  document.getElementById('btn-copy-key')?.addEventListener('click', () => {
+    const key = document.getElementById('api-key').value;
+    if (!key) { toast('No key to copy', 'warning'); return; }
+    navigator.clipboard.writeText(key).then(() => toast('API key copied', 'success'));
+  });
 }
 
 // ── Modal ──────────────────────────────────────────────────────────────────────

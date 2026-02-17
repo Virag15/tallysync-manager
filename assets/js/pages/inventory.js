@@ -23,7 +23,7 @@ async function initInventory() {
 
     const gf = document.getElementById('inv-group-filter');
     gf.innerHTML = '<option value="">All Groups</option>' +
-      groups.map(g => `<option value="${g}">${g}</option>`).join('');
+      groups.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('');
   } catch (_) {}
 
   await loadInventory();
@@ -56,17 +56,17 @@ function renderInventoryTable(items) {
 
   tbody.innerHTML = items.map(i => `
     <tr>
-      <td class="fw-600">${i.tally_name}</td>
-      <td class="text-muted text-sm">${i.alias || '—'}</td>
-      <td class="text-muted">${i.group_name || '—'}</td>
-      <td class="text-muted">${i.uom || '—'}</td>
+      <td class="fw-600">${esc(i.tally_name)}</td>
+      <td class="text-muted text-sm">${esc(i.alias) || '—'}</td>
+      <td class="text-muted">${esc(i.group_name) || '—'}</td>
+      <td class="text-muted">${esc(i.uom) || '—'}</td>
       <td class="text-right amount ${i.is_low_stock ? 'text-destructive' : ''}">${fmt.number(i.closing_qty, 4)}</td>
       <td class="text-right amount">${fmt.currency(i.closing_value)}</td>
       <td class="text-right amount">${fmt.currency(i.rate)}</td>
       <td class="text-right" style="white-space:nowrap;">
         <span class="amount">${fmt.number(i.reorder_level, 4)}</span>
         <button class="btn-icon sm" title="Edit reorder level"
-          data-id="${i.id}" data-name="${i.tally_name}" data-level="${i.reorder_level}"
+          data-id="${esc(String(i.id))}" data-name="${esc(i.tally_name)}" data-level="${esc(String(i.reorder_level))}"
           onclick="openReorderModal(this)">
           <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
         </button>

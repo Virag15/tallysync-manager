@@ -16,6 +16,14 @@ async function initOrders() {
 async function loadOrders() {
   const companyId = CompanyStore.get();
   if (!companyId) return;
+
+  const from = document.getElementById('order-from')?.value || undefined;
+  const to   = document.getElementById('order-to')?.value   || undefined;
+  if (from && to && from > to) {
+    toast('"From" date must be on or before "To" date', 'warning');
+    return;
+  }
+
   document.getElementById('orders-table-body').innerHTML = renderLoadingRow();
 
   try {
@@ -23,8 +31,8 @@ async function loadOrders() {
       company_id:  companyId,
       order_type:  document.getElementById('order-type-filter')?.value || undefined,
       status:      document.getElementById('order-status-filter')?.value || undefined,
-      from_date:   document.getElementById('order-from')?.value || undefined,
-      to_date:     document.getElementById('order-to')?.value || undefined,
+      from_date:   from,
+      to_date:     to,
       party_name:  document.getElementById('order-search')?.value || undefined,
     });
     renderOrdersTable(_ordersData);
@@ -38,13 +46,13 @@ function renderOrdersTable(orders) {
   if (!orders.length) { tbody.innerHTML = renderEmptyState('No orders found'); return; }
 
   tbody.innerHTML = orders.map(o => `<tr>
-    <td class="mono fw-600">${o.order_number}</td>
-    <td><span class="badge ${o.order_type === 'SALES' ? 'badge-secondary' : 'badge-outline'}">${o.order_type}</span></td>
+    <td class="mono fw-600">${esc(o.order_number)}</td>
+    <td><span class="badge ${o.order_type === 'SALES' ? 'badge-secondary' : 'badge-outline'}">${esc(o.order_type)}</span></td>
     <td class="text-muted">${fmt.date(o.order_date)}</td>
-    <td class="fw-500">${o.party_name}</td>
+    <td class="fw-500">${esc(o.party_name)}</td>
     <td class="text-right amount">${fmt.currency(o.total_amount)}</td>
     <td>${statusBadge(o.status)}</td>
-    <td class="mono text-muted text-xs">${o.tally_voucher_number || '—'}</td>
+    <td class="mono text-muted text-xs">${esc(o.tally_voucher_number) || '—'}</td>
     <td>
       <div class="flex gap-2">
         ${o.status !== 'PUSHED' && o.status !== 'CANCELLED'
@@ -65,9 +73,9 @@ async function populateDataLists(companyId) {
       Inventory.list({ company_id: companyId, limit: 1000 }),
     ]);
     const pd = document.getElementById('party-datalist');
-    if (pd) pd.innerHTML = ledgers.map(l => `<option value="${l.tally_name}">`).join('');
+    if (pd) pd.innerHTML = ledgers.map(l => `<option value="${esc(l.tally_name)}">`).join('');
     const sd = document.getElementById('stock-datalist');
-    if (sd) sd.innerHTML = stock.map(s => `<option value="${s.tally_name}" data-uom="${s.uom||'Nos'}" data-rate="${s.rate}">`).join('');
+    if (sd) sd.innerHTML = stock.map(s => `<option value="${esc(s.tally_name)}" data-uom="${esc(s.uom||'Nos')}" data-rate="${esc(String(s.rate))}">`).join('');
   } catch (_) {}
 }
 

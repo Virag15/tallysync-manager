@@ -26,6 +26,7 @@ BASE_DIR    = Path(__file__).resolve().parent          # server/
 DATA_DIR    = BASE_DIR / "data"
 DB_PATH     = DATA_DIR / "tallysync.db"
 LOG_DIR     = DATA_DIR / "logs"
+API_KEY_FILE = DATA_DIR / "api_key.txt"
 
 DATA_DIR.mkdir(exist_ok=True)
 LOG_DIR.mkdir(exist_ok=True)

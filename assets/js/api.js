@@ -12,8 +12,9 @@ const API_BASE = window.TALLYSYNC_API || 'http://localhost:8001';
 
 async function apiFetch(path, options = {}) {
   const url = `${API_BASE}${path}`;
+  const apiKey = localStorage.getItem('tallysync_api_key') || '';
   const defaults = {
-    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey, ...(options.headers || {}) },
   };
   const response = await fetch(url, { ...defaults, ...options });
 

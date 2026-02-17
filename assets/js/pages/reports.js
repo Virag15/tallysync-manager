@@ -32,6 +32,11 @@ async function runReport() {
   const fromDate = document.getElementById('report-from').value;
   const toDate   = document.getElementById('report-to').value;
 
+  if (fromDate && toDate && fromDate > toDate) {
+    toast('"From" date must be on or before "To" date', 'warning');
+    return;
+  }
+
   const tbody = document.getElementById('report-tbody');
   tbody.innerHTML = `<tr><td colspan="10" class="text-center" style="padding:32px;"><span class="spinner"></span></td></tr>`;
   if (_reportChart) { _reportChart.destroy(); _reportChart = null; }
@@ -107,7 +112,7 @@ async function renderStockSummary(companyId) {
 
   document.getElementById('report-thead').innerHTML = `<tr><th>Group</th><th class="text-right">Items</th><th class="text-right">Total Value (₹)</th></tr>`;
   document.getElementById('report-tbody').innerHTML = data.length
-    ? data.map(d => `<tr><td>${d.group}</td><td class="text-right">${d.item_count}</td><td class="text-right amount">${fmt.currency(d.total_value)}</td></tr>`).join('')
+    ? data.map(d => `<tr><td>${esc(d.group)}</td><td class="text-right">${d.item_count}</td><td class="text-right amount">${fmt.currency(d.total_value)}</td></tr>`).join('')
     : renderEmptyState('No stock data');
 }
 
@@ -120,8 +125,8 @@ async function renderLowStock(companyId) {
   document.getElementById('report-thead').innerHTML = `<tr><th>Item Name</th><th>Group</th><th>UOM</th><th class="text-right">Current Qty</th><th class="text-right">Reorder Level</th><th class="text-right">Deficit</th></tr>`;
   document.getElementById('report-tbody').innerHTML = data.length
     ? data.map(d => `<tr>
-        <td class="fw-600">${d.name}</td>
-        <td>${d.group || '—'}</td><td>${d.uom || '—'}</td>
+        <td class="fw-600">${esc(d.name)}</td>
+        <td>${esc(d.group) || '—'}</td><td>${esc(d.uom) || '—'}</td>
         <td class="text-right danger amount">${fmt.number(d.closing_qty, 4)}</td>
         <td class="text-right amount">${fmt.number(d.reorder_level, 4)}</td>
         <td class="text-right danger amount">${fmt.number(d.deficit, 4)}</td>
@@ -138,8 +143,8 @@ async function renderPartyOutstanding(companyId) {
   document.getElementById('report-thead').innerHTML = `<tr><th>Party Name</th><th>Type</th><th class="text-right">Closing Balance (₹)</th></tr>`;
   document.getElementById('report-tbody').innerHTML = data.length
     ? data.map(d => `<tr>
-        <td class="fw-600">${d.party_name}</td>
-        <td><span class="badge ${d.ledger_type === 'CUSTOMER' ? 'badge-info' : 'badge-warning'}">${d.ledger_type}</span></td>
+        <td class="fw-600">${esc(d.party_name)}</td>
+        <td><span class="badge ${d.ledger_type === 'CUSTOMER' ? 'badge-info' : 'badge-warning'}">${esc(d.ledger_type)}</span></td>
         <td class="text-right amount ${d.closing_balance < 0 ? 'danger' : ''}">${fmt.currency(Math.abs(d.closing_balance))}</td>
       </tr>`).join('')
     : renderEmptyState('No outstanding data');
@@ -156,7 +161,7 @@ async function renderItemMovement(companyId, from, to) {
   document.getElementById('report-thead').innerHTML = `<tr><th>Item Name</th><th class="text-right">Orders</th><th class="text-right">Total Qty</th><th class="text-right">Total Amount</th></tr>`;
   document.getElementById('report-tbody').innerHTML = data.length
     ? data.map(d => `<tr>
-        <td class="fw-600">${d.name}</td>
+        <td class="fw-600">${esc(d.name)}</td>
         <td class="text-right">${d.order_count}</td>
         <td class="text-right amount">${fmt.number(d.total_qty, 4)}</td>
         <td class="text-right amount">${fmt.currency(d.total_amount)}</td>
@@ -175,7 +180,7 @@ async function renderPartySales(companyId, from, to) {
   document.getElementById('report-thead').innerHTML = `<tr><th>Party</th><th class="text-right">Orders</th><th class="text-right">Total Amount</th></tr>`;
   document.getElementById('report-tbody').innerHTML = data.length
     ? data.map(d => `<tr>
-        <td class="fw-600">${d.party}</td>
+        <td class="fw-600">${esc(d.party)}</td>
         <td class="text-right">${d.order_count}</td>
         <td class="text-right amount">${fmt.currency(d.total_amount)}</td>
       </tr>`).join('')

@@ -7,16 +7,17 @@ Build   : 20260217.001
 from __future__ import annotations
 
 import logging
+import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from config import APP_NAME, APP_VERSION, APP_BUILD, DB_PATH, settings
+from config import APP_NAME, APP_VERSION, APP_BUILD, DB_PATH, API_KEY_FILE, settings
 from database import init_db, SessionLocal
 from models.schemas import ConnectionTestResult
 from routes import companies, inventory, ledgers, orders, reports, vouchers, events
@@ -24,6 +25,32 @@ from sync import start_scheduler, scheduler
 from tally_client import TallyClient
 
 logger = logging.getLogger("tallysync.main")
+
+
+# ─── API Key ─────────────────────────────────────────────────────────────────
+
+def _load_or_create_api_key() -> str:
+    """Return the persistent API key, generating one on first run."""
+    if API_KEY_FILE.exists():
+        key = API_KEY_FILE.read_text().strip()
+        if key:
+            return key
+    key = secrets.token_hex(16)   # 32 hex chars
+    API_KEY_FILE.write_text(key)
+    API_KEY_FILE.chmod(0o600)
+    logger.info("Generated new API key — copy it from Settings after first launch")
+    return key
+
+_API_KEY: str = _load_or_create_api_key()
+
+
+def verify_api_key(x_api_key: str = Header(default="")) -> None:
+    """FastAPI dependency — validates X-API-Key header on protected routes."""
+    if x_api_key != _API_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing API key. Set it in Settings → Backend Server URL.",
+        )
 
 
 # ─── Lifespan (startup / shutdown) ───────────────────────────────────────────
@@ -62,36 +89,44 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — allow the frontend (served separately or from file://)
+# CORS — allow localhost origins + Vercel-hosted frontend
+_cors_origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()] \
+    if settings.cors_origins != "*" else ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],          # tighten in production
+    allow_origins=_cors_origins,
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-# ─── Routes ──────────────────────────────────────────────────────────────────
+# ─── Routes (all protected by API key) ───────────────────────────────────────
 
-app.include_router(companies.router)
-app.include_router(inventory.router)
-app.include_router(ledgers.router)
-app.include_router(orders.router)
-app.include_router(reports.router)
-app.include_router(vouchers.router)
-app.include_router(events.router)
+_auth = [Depends(verify_api_key)]
+
+app.include_router(companies.router, dependencies=_auth)
+app.include_router(inventory.router, dependencies=_auth)
+app.include_router(ledgers.router,   dependencies=_auth)
+app.include_router(orders.router,    dependencies=_auth)
+app.include_router(reports.router,   dependencies=_auth)
+app.include_router(vouchers.router,  dependencies=_auth)
+app.include_router(events.router,    dependencies=_auth)
 
 
 # ─── Info Endpoint ────────────────────────────────────────────────────────────
 
 @app.get("/api/info", tags=["meta"])
 def app_info():
+    """Public endpoint — returns app info including the API key for Settings display."""
     return {
         "name":    APP_NAME,
         "version": APP_VERSION,
         "build":   APP_BUILD,
         "db_path": str(DB_PATH),
+        "api_key": _API_KEY,
     }
 
 
@@ -105,7 +140,8 @@ class ProbeRequest(BaseModel):
     port: int = 9000
 
 
-@app.post("/api/probe", response_model=ConnectionTestResult, tags=["meta"])
+@app.post("/api/probe", response_model=ConnectionTestResult, tags=["meta"],
+          dependencies=[Depends(verify_api_key)])
 async def probe_connection(req: ProbeRequest):
     """Test a Tally connection using raw host/port — no saved company needed."""
     client = TallyClient(req.host, req.port)
