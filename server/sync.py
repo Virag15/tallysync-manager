@@ -251,7 +251,7 @@ async def _sync_vouchers(db: Session, company: Company, client: TallyClient) -> 
         except Exception as exc:
             logger.warning("Could not sync '%s' vouchers for '%s': %s", vtype, company.name, exc)
 
-    db.flush()
+    db.commit()
     return count
 
 

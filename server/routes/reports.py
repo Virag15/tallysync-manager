@@ -231,12 +231,16 @@ def party_outstanding(
 
 @router.get("/item-movement")
 def item_movement(
-    company_id: int = Query(...),
-    days:       int = Query(30, ge=1, le=365),
-    limit:      int = Query(20, ge=1, le=100),
+    company_id: int               = Query(...),
+    days:       int               = Query(30, ge=1, le=365),
+    limit:      int               = Query(20, ge=1, le=100),
+    from_date:  Optional[date]    = Query(None),
+    to_date:    Optional[date]    = Query(None),
     db: Session = Depends(get_db),
 ):
-    from_date = date.today() - timedelta(days=days)
+    # Accept either explicit date range (from reports page) or a rolling 'days' window
+    if not from_date:
+        from_date = date.today() - timedelta(days=days)
 
     rows = (
         db.query(
@@ -250,6 +254,7 @@ def item_movement(
             Order.company_id == company_id,
             Order.status != "CANCELLED",
             Order.order_date >= from_date,
+            *(  [Order.order_date <= to_date] if to_date else []  ),
         )
         .group_by(OrderItem.stock_item_name)
         .order_by(func.sum(OrderItem.amount).desc())

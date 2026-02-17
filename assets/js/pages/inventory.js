@@ -55,6 +55,12 @@ function renderInventoryTable(items) {
   const tbody = document.getElementById('inv-table-body');
   if (!items.length) { tbody.innerHTML = renderEmptyState('No stock items found'); return; }
 
+  // Warn when result is at the 500-item cap (more items may exist)
+  const limitNote = document.getElementById('inv-limit-note');
+  if (limitNote) limitNote.textContent = items.length >= 500
+    ? 'Showing first 500 items — use search or filters to narrow results'
+    : '';
+
   tbody.innerHTML = items.map(i => `
     <tr>
       <td class="fw-600">${esc(i.tally_name)}</td>

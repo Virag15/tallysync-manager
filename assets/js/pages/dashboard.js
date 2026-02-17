@@ -129,9 +129,9 @@ function renderLowStockTable(items) {
   }
   tbody.innerHTML = items.slice(0, 8).map(i => `
     <tr>
-      <td class="fw-600">${i.name}</td>
-      <td class="text-muted">${i.group || '—'}</td>
-      <td>${i.uom || '—'}</td>
+      <td class="fw-600">${esc(i.name)}</td>
+      <td class="text-muted">${esc(i.group) || '—'}</td>
+      <td>${esc(i.uom) || '—'}</td>
       <td class="text-right amount text-destructive">${fmt.number(i.closing_qty, 4)}</td>
       <td class="text-right amount">${fmt.number(i.reorder_level, 4)}</td>
       <td class="text-right amount text-destructive">${fmt.number(i.deficit, 4)}</td>
