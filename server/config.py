@@ -6,6 +6,7 @@ Build   : 20260217.001
 
 from __future__ import annotations
 import logging
+import sys
 import os
 from pathlib import Path
 
@@ -22,7 +23,14 @@ APP_AUTHOR  = "TallySync"
 
 # ─── Paths ───────────────────────────────────────────────────────────────────
 
-BASE_DIR    = Path(__file__).resolve().parent          # server/
+# When running as a PyInstaller binary (sys.frozen), store data next to the
+# executable so it persists across runs.  When running from source, use the
+# traditional server/ directory.
+if getattr(sys, 'frozen', False):
+    BASE_DIR = Path(sys.executable).resolve().parent
+else:
+    BASE_DIR = Path(__file__).resolve().parent
+
 DATA_DIR    = BASE_DIR / "data"
 DB_PATH     = DATA_DIR / "tallysync.db"
 LOG_DIR     = DATA_DIR / "logs"

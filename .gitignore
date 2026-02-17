@@ -29,6 +29,10 @@ htmlcov/
 # Logs
 *.log
 
+# Distribution builds (generated — don't commit binaries)
+dist/
+*.spec
+
 # Claude
 .claude/
 .agent/
